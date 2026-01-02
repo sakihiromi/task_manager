@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Command Center | やる気が出るタスク管理</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TaskCC">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">⚡</div>
+                <div class="logo-text">
+                    Task Command
+                    <span>Center</span>
+                </div>
+            </div>
+
+            <nav class="nav-section">
+                <div class="nav-label">ビュー</div>
+                <a href="index.html" class="nav-item active" style="text-decoration: none;">
+                    <span class="icon">📊</span>
+                    <span>ダッシュボード</span>
+                </a>
+                <a href="projects.html" class="nav-item" style="text-decoration: none;">
+                    <span class="icon">📂</span>
+                    <span>プロジェクト</span>
+                </a>
+                <a href="planner.html" class="nav-item" style="text-decoration: none;">
+                    <span class="icon">📅</span>
+                    <span>プランナー</span>
+                </a>
+                <a href="meetings.html" class="nav-item" style="text-decoration: none;">
+                    <span class="icon">🎙️</span>
+                    <span>会議メモ</span>
+                </a>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-label">カテゴリ</div>
+                <div class="nav-item" onclick="scrollToCategory('work')">
+                    <span class="icon">💼</span>
+                    <span>仕事</span>
+                </div>
+                <div class="nav-item" onclick="scrollToCategory('research')">
+                    <span class="icon">🔬</span>
+                    <span>研究</span>
+                </div>
+                <div class="nav-item" onclick="scrollToCategory('certification')">
+                    <span class="icon">📚</span>
+                    <span>資格試験</span>
+                </div>
+                <div class="nav-item" onclick="scrollToCategory('private')">
+                    <span class="icon">🏠</span>
+                    <span>プライベート</span>
+                </div>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-label">その他</div>
+                <div class="nav-item" onclick="scrollToCategory('meeting-memos')">
+                    <span class="icon">📝</span>
+                    <span>ミーティングメモ</span>
+                </div>
+            </nav>
+
+            <!-- AI Button will be injected here by ai_planner.js -->
+
+            <div class="user-card">
+                <div class="user-info">
+                    <div class="user-avatar">S</div>
+                    <div class="user-details">
+                        <div class="user-name">Saki</div>
+                        <div class="user-level">🔥 Productivity Master</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- Top Stats Grid -->
+            <div class="top-stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">完了率</div>
+                    <div class="stat-value gradient" id="stat-completion-rate">0%</div>
+                    <div class="stat-trend">
+                        <span>📈</span> 目標達成度
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">完了タスク</div>
+                    <div class="stat-value" id="stat-completed-count">0</div>
+                    <div class="stat-trend trend-up">
+                        <span>✅</span> 累計
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">残りタスク</div>
+                    <div class="stat-value" id="stat-pending-count">0</div>
+                    <div class="stat-trend">
+                        <span>📋</span> 進行中
+                    </div>
+                </div>
+                <div class="stat-box streak">
+                    <div class="stat-label">連続達成</div>
+                    <div class="stat-value" id="stat-streak">0</div>
+                    <div class="stat-trend">
+                        <span>🔥</span> 日
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Heatmap & Charts -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                <!-- Heatmap Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="icon">📅</span>
+                            アクティビティログ
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">過去30日間</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="contribution-heatmap" class="heatmap-container">
+                            <!-- Heatmap injected by JS -->
+                        </div>
+                        <div style="display: flex; gap: 6px; font-size: 0.7rem; color: var(--text-muted); align-items: center; margin-top: 12px; justify-content: flex-end;">
+                            <span>Less</span>
+                            <div class="heatmap-cell" style="width:12px; height:12px;"></div>
+                            <div class="heatmap-cell" style="width:12px; height:12px;" data-level="1"></div>
+                            <div class="heatmap-cell" style="width:12px; height:12px;" data-level="2"></div>
+                            <div class="heatmap-cell" style="width:12px; height:12px;" data-level="3"></div>
+                            <div class="heatmap-cell" style="width:12px; height:12px;" data-level="4"></div>
+                            <span>More</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Distribution Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="icon">📊</span>
+                            カテゴリ分布
+                        </div>
+                    </div>
+                    <div class="card-body" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Management Toolbar -->
+            <div class="task-toolbar">
+                <div class="toolbar-left">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="task-search" class="search-input" placeholder="タスクを検索..." oninput="filterTasks()">
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" onclick="setTaskFilter('all')">
+                            すべて <span class="filter-count" id="filter-all-count">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="active" onclick="setTaskFilter('active')">
+                            未完了 <span class="filter-count" id="filter-active-count">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="overdue" onclick="setTaskFilter('overdue')">
+                            ⚠️ 期限超過 <span class="filter-count" id="filter-overdue-count">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="today" onclick="setTaskFilter('today')">
+                            📅 今日 <span class="filter-count" id="filter-today-count">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="high" onclick="setTaskFilter('high')">
+                            🔴 重要 <span class="filter-count" id="filter-high-count">0</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <button class="focus-mode-btn" id="focus-mode-btn" onclick="toggleFocusMode()">
+                        🎯 フォーカスモード
+                    </button>
+                    <div class="sort-dropdown">
+                        <select id="task-sort" class="form-control" onchange="setSortOrder(this.value)" style="width: auto; padding: 8px 12px;">
+                            <option value="priority">優先度順</option>
+                            <option value="deadline">期限順</option>
+                            <option value="created">作成日順</option>
+                            <option value="name">名前順</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" onclick="toggleCompletedTasks()" id="toggle-completed-btn">
+                        ✅ 完了を隠す
+                    </button>
+                    <button class="btn-icon" onclick="showKeyboardHints()" title="キーボードショートカット" style="font-size: 1.1rem;">
+                        ⌨️
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Stats Bar -->
+            <div class="quick-stats-bar" id="quick-stats-bar">
+                <div class="quick-stat overdue" id="quick-stat-overdue" style="display: none;">
+                    <span class="quick-stat-icon">⚠️</span>
+                    <span class="quick-stat-text"><strong id="overdue-count">0</strong> 件が期限超過</span>
+                </div>
+                <div class="quick-stat today" id="quick-stat-today">
+                    <span class="quick-stat-icon">📅</span>
+                    <span class="quick-stat-text">今日の期限: <strong id="today-count">0</strong> 件</span>
+                </div>
+                <div class="quick-stat upcoming">
+                    <span class="quick-stat-icon">📆</span>
+                    <span class="quick-stat-text">今週の期限: <strong id="week-count">0</strong> 件</span>
+                </div>
+            </div>
+
+            <!-- Tasks Grid - 4 Category Layout -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;" id="tasks-grid">
+
+                <!-- Work Tasks -->
+                <div class="card" id="category-work">
+                        <div class="card-header">
+                        <div class="card-title">
+                            <span class="icon">💼</span>
+                            仕事
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('work')" style="padding: 8px 16px; font-size: 0.85rem;">
+                            + 追加
+                        </button>
+                    </div>
+                    <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
+                        <div id="work-tasks" class="task-list-pro"></div>
+                    </div>
+                </div>
+
+                <!-- Research Tasks -->
+                <div class="card" id="category-research">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="icon">🔬</span>
+                            研究
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('research')" style="padding: 8px 16px; font-size: 0.85rem;">
+                            + 追加
+                        </button>
+                    </div>
+                    <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
+                        <div id="research-tasks" class="task-list-pro"></div>
+                            </div>
+                        </div>
+
+                <!-- Certification Tasks -->
+                <div class="card" id="category-certification">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="icon">📚</span>
+                            資格試験
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('certification')" style="padding: 8px 16px; font-size: 0.85rem;">
+                            + 追加
+                        </button>
+                    </div>
+                    <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
+                        <div id="certification-tasks" class="task-list-pro"></div>
+                    </div>
+                </div>
+
+                <!-- Private Tasks -->
+                <div class="card" id="category-private">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span class="icon">🏠</span>
+                            プライベート
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('private')" style="padding: 8px 16px; font-size: 0.85rem;">
+                            + 追加
+                        </button>
+                    </div>
+                    <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
+                        <div id="private-tasks" class="task-list-pro"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Meeting Memos Section -->
+            <div class="card" id="category-meeting-memos">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📝</span>
+                        ミーティングメモ
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="meetings.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.85rem; text-decoration: none;">
+                            🎙️ Teams連携
+                        </a>
+                        <button class="btn btn-primary" onclick="MemoUI.openModal()" style="padding: 8px 16px; font-size: 0.85rem;">
+                            + 新規メモ
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
+                    <div id="memo-list" class="memo-list"></div>
+                </div>
+            </div>
+
+            <!-- Calendar Widget -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📅</span>
+                        月間カレンダー
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="btn-icon" onclick="CalendarManager.prevMonth()">‹</button>
+                        <span id="calendar-title" style="font-weight: 600; font-size: 0.95rem; min-width: 100px; text-align: center;">2026 / 01</span>
+                        <button class="btn-icon" onclick="CalendarManager.nextMonth()">›</button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding: 16px;">
+                    <div id="calendar-widget"></div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Unified Task Modal -->
+    <div class="modal-overlay" id="task-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>📝 タスクを管理</h3>
+                <button class="btn-icon" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="task-form">
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">タスク名</label>
+                        <input type="text" id="task-title" class="form-control" required
+                            placeholder="タスクのタイトルを入力...">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">プロジェクト / 目標名</label>
+                        <input type="text" id="task-project" class="form-control" 
+                            placeholder="例: 司法予備試験、機械学習論文、新規事業開発...">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                            同じ目標のタスクをグループ化できます
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">カテゴリ</label>
+                            <select id="task-category" class="form-control">
+                                <option value="work">💼 仕事</option>
+                                <option value="research">🔬 研究</option>
+                                <option value="certification">📚 資格試験</option>
+                                <option value="private">🏠 プライベート</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">優先度</label>
+                            <select id="task-priority" class="form-control">
+                                <option value="low">🟢 低</option>
+                                <option value="medium" selected>🟡 中</option>
+                                <option value="high">🔴 高</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;" id="subcategory-group">
+                        <label class="form-label">サブカテゴリ</label>
+                        <select id="task-subcategory" class="form-control">
+                            <option value="">なし</option>
+                            <!-- Dynamic options based on category -->
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">期限</label>
+                        <input type="date" id="task-deadline" class="form-control">
+                    </div>
+
+                    <div style="margin-bottom: 24px;">
+                        <label class="form-label">サブタスク</label>
+                        <div class="subtasks-wrapper">
+                            <div id="subtask-list-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                                <!-- Subtasks go here -->
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addSubtaskInput()" style="width: 100%;">
+                                + サブタスクを追加
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <button type="button" class="btn btn-danger" id="btn-delete-task" onclick="deleteCurrentTask()" style="display: none;">
+                            🗑️ 削除
+                        </button>
+                        <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+                            <button type="submit" class="btn btn-primary">💾 保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meeting Memo Modal -->
+    <div class="modal-overlay" id="memo-modal">
+        <div class="modal-container" style="width: 600px;">
+            <div class="modal-header">
+                <h3>📝 ミーティングメモ</h3>
+                <button class="btn-icon" onclick="closeMemoModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="memo-form">
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">タイトル</label>
+                        <input type="text" id="memo-title" class="form-control" required
+                            placeholder="ミーティングのタイトル...">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">プロジェクト名</label>
+                            <input type="text" id="memo-project" class="form-control" 
+                                placeholder="関連するプロジェクト...">
+                        </div>
+                        <div>
+                            <label class="form-label">日付</label>
+                            <input type="date" id="memo-date" class="form-control">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">参加者</label>
+                        <input type="text" id="memo-participants" class="form-control" 
+                            placeholder="山田、佐藤、田中...">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">内容</label>
+                        <textarea id="memo-content" class="form-control" rows="5" 
+                            placeholder="ミーティングの内容..."></textarea>
+                    </div>
+
+                    <div style="margin-bottom: 24px;">
+                        <label class="form-label">アクションアイテム</label>
+                        <div class="subtasks-wrapper">
+                            <div id="action-items-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                                <!-- Action items go here -->
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addActionItem()" style="width: 100%;">
+                                + アクションを追加
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <button type="button" class="btn btn-danger" id="btn-delete-memo" onclick="deleteCurrentMemo()" style="display: none;">
+                            🗑️ 削除
+                        </button>
+                        <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" onclick="closeMemoModal()">キャンセル</button>
+                            <button type="submit" class="btn btn-primary">💾 保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div class="modal-overlay" id="day-modal">
+        <div class="modal-container" style="width: 450px;">
+            <div class="modal-header">
+                <h3 id="day-modal-title">📅 日付の詳細</h3>
+                <button class="btn-icon" onclick="document.getElementById('day-modal').classList.remove('active')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="day-tasks-list" class="task-list-pro" style="max-height: 350px; overflow-y: auto;">
+                    <!-- Daily tasks injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memo Modal -->
+    <div class="modal-overlay" id="memo-modal">
+        <div class="modal-container" style="width: 600px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);">
+                <h3>📝 メモを編集</h3>
+                <button class="btn-icon" onclick="MemoUI.closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="memo-form">
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">タイトル</label>
+                        <input type="text" id="memo-title" class="form-control" required
+                            placeholder="ミーティングのタイトル...">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">プロジェクト名</label>
+                        <input type="text" id="memo-project" class="form-control" 
+                            placeholder="例: 新規事業開発、論文執筆、研究打ち合わせ...">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                            同じプロジェクトのメモがグループ化されます
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">タイプ</label>
+                            <select id="memo-type" class="form-control">
+                                <option value="meeting">🗣️ ミーティング</option>
+                                <option value="note">📝 メモ</option>
+                                <option value="idea">💡 アイデア</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">日付</label>
+                            <input type="date" id="memo-date" class="form-control">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">参加者（カンマ区切り）</label>
+                        <input type="text" id="memo-participants" class="form-control" 
+                            placeholder="例: 田中, 佐藤, 山田">
+                    </div>
+
+                    <div style="margin-bottom: 24px;">
+                        <label class="form-label">内容</label>
+                        <textarea id="memo-content" class="form-control" rows="8" 
+                            placeholder="ミーティングの内容、決定事項、次のアクションなど..."></textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <button type="button" class="btn btn-danger" id="btn-delete-memo" onclick="MemoUI.deleteMemo()" style="display: none;">
+                            🗑️ 削除
+                        </button>
+                        <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" onclick="MemoUI.closeModal()">キャンセル</button>
+                            <button type="submit" class="btn btn-primary">💾 保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/calendar.js"></script>
+    <script src="js/memos.js"></script>
+    <script src="js/ai_planner.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button in UI
+            const installBtn = document.createElement('div');
+            installBtn.className = 'nav-item install-prompt';
+            installBtn.innerHTML = '<span class="icon">📲</span><span>アプリをインストール</span>';
+            installBtn.onclick = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response to install prompt: ${outcome}`);
+                    deferredPrompt = null;
+                    installBtn.remove();
+                }
+            };
+            
+            // Add to sidebar
+            const sidebar = document.querySelector('.sidebar .nav-section:first-of-type');
+            if (sidebar) {
+                sidebar.appendChild(installBtn);
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA was installed');
+            deferredPrompt = null;
+        });
+    </script>
+
+</body>
+
+</html>

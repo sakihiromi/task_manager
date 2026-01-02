@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            padding: 20px;
+            background: #1a1a23;
+            color: white;
+        }
+        .icons { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+        }
+        .icon-item {
+            text-align: center;
+        }
+        .icon-item canvas {
+            display: block;
+            margin-bottom: 10px;
+            border-radius: 20%;
+        }
+        .download-btn {
+            padding: 8px 16px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ PWA Icon Generator</h1>
+    <p>Click each button to download the icon</p>
+    <div class="icons" id="icons"></div>
+    
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const container = document.getElementById('icons');
+        
+        sizes.forEach(size => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#6366f1');
+            gradient.addColorStop(0.5, '#8b5cf6');
+            gradient.addColorStop(1, '#ec4899');
+            
+            // Draw rounded rect
+            const radius = size * 0.2;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Draw lightning bolt emoji
+            ctx.font = `${size * 0.55}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚡', size/2, size/2);
+            
+            const div = document.createElement('div');
+            div.className = 'icon-item';
+            div.appendChild(canvas);
+            
+            const btn = document.createElement('button');
+            btn.className = 'download-btn';
+            btn.textContent = `${size}x${size}`;
+            btn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = `icon-${size}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+            div.appendChild(btn);
+            
+            container.appendChild(div);
+        });
+    </script>
+</body>
+</html>

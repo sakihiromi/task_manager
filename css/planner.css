@@ -1,0 +1,1053 @@
+/* ===================================
+   Planner - Notion-style Goal & Plan Management
+   =================================== */
+
+/* Layout */
+.planner-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 28px;
+    min-height: 100vh;
+}
+
+.planner-main {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Header */
+.planner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+.period-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.period-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    min-width: 200px;
+    text-align: center;
+}
+
+.view-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-input);
+    padding: 4px;
+    border-radius: var(--radius-md);
+}
+
+.view-tab {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.view-tab:hover {
+    color: var(--text-primary);
+}
+
+.view-tab.active {
+    background: var(--gradient-hero);
+    color: white;
+}
+
+/* Views */
+.planner-view {
+    display: none;
+}
+
+.planner-view.active {
+    display: block;
+}
+
+/* Section Headers */
+.section-header {
+    margin-bottom: 20px;
+}
+
+.section-header h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.section-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* ===================================
+   Year View - Goals
+   =================================== */
+
+.year-goals-section {
+    margin-bottom: 40px;
+}
+
+.goals-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.goal-category {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    transition: all 0.2s;
+}
+
+.goal-category:hover {
+    border-color: var(--border-accent);
+}
+
+.goal-category-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.goal-icon {
+    font-size: 1.5rem;
+}
+
+.goal-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.goal-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    min-height: 60px;
+}
+
+.empty-goals {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px;
+}
+
+.goal-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.goal-item:hover {
+    background: var(--bg-card-hover);
+}
+
+.goal-item.completed .goal-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.goal-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.goal-item.completed .goal-checkbox {
+    background: var(--accent-success);
+    border-color: var(--accent-success);
+}
+
+.goal-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.add-goal-btn {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-goal-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+/* Month Overview Grid */
+.month-overview-section {
+    margin-top: 20px;
+}
+
+.months-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.month-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.month-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+}
+
+.month-card-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.month-card-stats {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.month-card-stats .empty {
+    color: var(--text-muted);
+}
+
+/* ===================================
+   Month View
+   =================================== */
+
+.month-header-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.month-quote {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.quote-icon {
+    font-size: 1.5rem;
+}
+
+.quote-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.quote-input::placeholder {
+    color: var(--text-muted);
+}
+
+.month-goals-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.month-goals-section h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.month-todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    min-height: 40px;
+}
+
+.empty-todos {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 12px;
+    text-align: center;
+}
+
+.todo-item, .category-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+
+.todo-item:hover, .category-item:hover {
+    background: var(--bg-card-hover);
+}
+
+.todo-checkbox, .item-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.todo-item.completed .todo-checkbox,
+.category-item.completed .item-checkbox {
+    background: var(--accent-success);
+    border-color: var(--accent-success);
+}
+
+.todo-item.completed .todo-text,
+.category-item.completed .item-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.todo-text, .item-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.delete-btn {
+    opacity: 0;
+    color: var(--accent-danger) !important;
+    transition: opacity 0.2s;
+}
+
+.todo-item:hover .delete-btn,
+.category-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.add-todo-row {
+    display: flex;
+    gap: 12px;
+}
+
+.add-todo-row .form-control {
+    flex: 1;
+}
+
+/* Month Categories */
+.month-categories {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.month-category {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.month-category h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.category-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    min-height: 40px;
+}
+
+.add-item-btn {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-item-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* ===================================
+   Week Section (in Month View)
+   =================================== */
+
+.week-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.week-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(to right, rgba(99, 102, 241, 0.08) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.week-section-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.week-message-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 400px;
+    margin-left: 20px;
+}
+
+.week-message-icon {
+    font-size: 1.2rem;
+}
+
+.week-message-inline {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border-subtle);
+    padding: 8px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.week-message-inline:focus {
+    border-bottom-color: var(--accent-primary);
+    border-bottom-style: solid;
+}
+
+.week-message-inline::placeholder {
+    color: var(--text-muted);
+}
+
+/* Week TODOs Section */
+.week-todos-section {
+    padding: 16px 20px;
+    background: rgba(99, 102, 241, 0.03);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.week-todos-section h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.week-todos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    min-height: 30px;
+}
+
+.empty-week-todos {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding: 10px;
+    text-align: center;
+}
+
+.week-todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+
+.week-todo-item:hover {
+    background: var(--bg-card-hover);
+}
+
+.week-todo-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.week-todo-item.completed .week-todo-checkbox {
+    background: var(--accent-success);
+    border-color: var(--accent-success);
+}
+
+.week-todo-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.week-todo-item.completed .week-todo-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.add-week-todo-row {
+    display: flex;
+    gap: 10px;
+}
+
+.add-week-todo-row .form-control {
+    flex: 1;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+.week-days-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border-subtle);
+}
+
+.week-day {
+    background: var(--bg-card);
+    padding: 12px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+}
+
+.week-day.weekend {
+    background: rgba(99, 102, 241, 0.03);
+}
+
+.week-day.today {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.day-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.day-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.day-tasks {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.day-task {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 0.8rem;
+    padding: 4px 0;
+}
+
+.day-task.completed {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.task-check {
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.day-task.completed .task-check {
+    color: var(--accent-success);
+}
+
+.task-text {
+    color: var(--text-primary);
+}
+
+.day-task.completed .task-text {
+    color: var(--text-muted);
+}
+
+.add-task-inline {
+    margin-top: auto;
+}
+
+.inline-task-input {
+    width: 100%;
+    padding: 6px 8px;
+    background: transparent;
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.inline-task-input:focus {
+    border-color: var(--accent-primary);
+    border-style: solid;
+}
+
+.inline-task-input::placeholder {
+    color: var(--text-muted);
+}
+
+.week-section-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border-subtle);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.footer-section {
+    background: var(--bg-card);
+    padding: 16px 20px;
+}
+
+.footer-label {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.footer-notes {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.footer-notes:focus {
+    border-color: var(--accent-primary);
+}
+
+.footer-notes::placeholder {
+    color: var(--text-muted);
+}
+
+/* ===================================
+   Week View (Standalone)
+   =================================== */
+
+.week-header-card {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.week-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.message-icon {
+    font-size: 1.5rem;
+}
+
+#week-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.week-day-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s;
+}
+
+.week-day-card:hover {
+    border-color: var(--border-accent);
+}
+
+.week-day-card.today {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+.week-day-card.weekend {
+    background: linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 0%, var(--bg-card) 100%);
+}
+
+.day-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.week-day-card.today .day-card-header {
+    border-bottom-color: var(--accent-primary);
+}
+
+.day-tasks-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.task-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.task-row:hover {
+    background: var(--bg-card-hover);
+}
+
+.task-row.completed {
+    opacity: 0.6;
+}
+
+.task-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.task-row.completed .task-checkbox {
+    background: var(--accent-success);
+    border-color: var(--accent-success);
+}
+
+.task-label {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.task-row.completed .task-label {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.mini-delete {
+    opacity: 0;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 0.8rem !important;
+    color: var(--accent-danger) !important;
+}
+
+.task-row:hover .mini-delete {
+    opacity: 1;
+}
+
+.add-task-row {
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.add-task-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.add-task-input:focus {
+    border-color: var(--accent-primary);
+    border-style: solid;
+}
+
+.add-task-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Week Summary */
+.week-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.summary-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.summary-section h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.summary-task {
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.summary-task.deadline {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+}
+
+.empty-summary {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Synced Tasks from Dashboard/Projects */
+.synced-tasks-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 8px 0 4px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--border-subtle);
+}
+
+.task-row.synced {
+    background: rgba(99, 102, 241, 0.08);
+    border-left: 3px solid var(--accent-primary);
+    cursor: pointer;
+}
+
+.task-row.synced:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.task-checkbox.checked {
+    background: var(--accent-success);
+    border-color: var(--accent-success);
+}
+
+/* Summary task with category icon */
+.summary-task {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.summary-task span {
+    flex-shrink: 0;
+}
+
+/* ===================================
+   Responsive
+   =================================== */
+
+@media (max-width: 1400px) {
+    .goals-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .months-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    #week-days-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 1024px) {
+    .planner-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .sidebar {
+        position: relative;
+        height: auto;
+    }
+    
+    .month-categories {
+        grid-template-columns: 1fr;
+    }
+    
+    .week-days-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    #week-days-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .goals-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .months-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .week-days-row {
+        grid-template-columns: 1fr;
+    }
+    
+    #week-days-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .week-summary {
+        grid-template-columns: 1fr;
+    }
+}

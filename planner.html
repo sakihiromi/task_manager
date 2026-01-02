@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner | 目標・計画管理</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/planner.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+</head>
+
+<body>
+
+    <div class="planner-container">
+
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">📅</div>
+                <div class="logo-text">
+                    Life Planner
+                    <span>年間・月間・週間</span>
+                </div>
+            </div>
+
+            <nav class="nav-section">
+                <div class="nav-label">ビュー</div>
+                <a href="index.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>ダッシュボード</span>
+                </a>
+                <a href="projects.html" class="nav-item">
+                    <span class="icon">📂</span>
+                    <span>プロジェクト</span>
+                </a>
+                <a href="planner.html" class="nav-item active">
+                    <span class="icon">📅</span>
+                    <span>プランナー</span>
+                </a>
+                <a href="meetings.html" class="nav-item">
+                    <span class="icon">🎙️</span>
+                    <span>会議メモ</span>
+                </a>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-label">期間</div>
+                <div class="nav-item" onclick="PlannerUI.showView('year')">
+                    <span class="icon">🎯</span>
+                    <span>年間目標</span>
+                </div>
+                <div class="nav-item" onclick="PlannerUI.showView('month')">
+                    <span class="icon">📆</span>
+                    <span>月間プラン</span>
+                </div>
+                <div class="nav-item" onclick="PlannerUI.showView('week')">
+                    <span class="icon">📋</span>
+                    <span>週間プラン</span>
+                </div>
+            </nav>
+
+            <div class="user-card">
+                <div class="user-info">
+                    <div class="user-avatar">S</div>
+                    <div class="user-details">
+                        <div class="user-name">Saki</div>
+                        <div class="user-level">🌟 Life Planner</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="planner-main">
+
+            <!-- Year Selector -->
+            <div class="planner-header">
+                <div class="period-nav">
+                    <button class="btn-icon" onclick="PlannerUI.prevPeriod()">‹</button>
+                    <h1 id="period-title" class="period-title">2026年</h1>
+                    <button class="btn-icon" onclick="PlannerUI.nextPeriod()">›</button>
+                </div>
+                <div class="view-tabs">
+                    <button class="view-tab active" data-view="year" onclick="PlannerUI.showView('year')">年間</button>
+                    <button class="view-tab" data-view="month" onclick="PlannerUI.showView('month')">月間</button>
+                    <button class="view-tab" data-view="week" onclick="PlannerUI.showView('week')">週間</button>
+                </div>
+            </div>
+
+            <!-- Year View -->
+            <div id="year-view" class="planner-view active">
+                <div class="year-goals-section">
+                    <div class="section-header">
+                        <h2>🎯 年間目標</h2>
+                        <p class="section-subtitle">今年達成したいこと</p>
+                    </div>
+                    
+                    <div class="goals-grid">
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">💼</span>
+                                <span class="goal-title">仕事・キャリア</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-work"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('work')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">🎓</span>
+                                <span class="goal-title">学習・成長</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-study"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('study')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">🏋️</span>
+                                <span class="goal-title">健康・ライフスタイル</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-health"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('health')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">💰</span>
+                                <span class="goal-title">お金・資産</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-money"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('money')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">❤️</span>
+                                <span class="goal-title">人間関係</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-relationship"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('relationship')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">✨</span>
+                                <span class="goal-title">その他</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-other"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('other')">+ 目標を追加</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Month Overview Grid -->
+                <div class="month-overview-section">
+                    <div class="section-header">
+                        <h2>📆 月別サマリー</h2>
+                    </div>
+                    <div class="months-grid" id="year-months-grid">
+                        <!-- 12 months will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Month View -->
+            <div id="month-view" class="planner-view">
+                <div class="month-header-card">
+                    <div class="month-quote">
+                        <span class="quote-icon">💡</span>
+                        <input type="text" id="month-quote-input" class="quote-input" 
+                            placeholder="どんな１ヶ月にしたい？">
+                    </div>
+                </div>
+
+                <div class="month-goals-section">
+                    <h3>✔️ 今月やること</h3>
+                    <div class="month-todo-list" id="month-todos"></div>
+                    <div class="add-todo-row">
+                        <input type="text" id="new-month-todo" class="form-control" placeholder="今月やることを追加...">
+                        <button class="btn btn-primary" onclick="PlannerUI.addMonthTodo()">追加</button>
+                    </div>
+                </div>
+
+                <div class="month-categories">
+                    <div class="month-category">
+                        <h4>🤝 仕事</h4>
+                        <div class="category-items" id="month-work-items"></div>
+                        <button class="add-item-btn" onclick="PlannerUI.addMonthItem('work')">+ 追加</button>
+                    </div>
+                    <div class="month-category">
+                        <h4>🎓 学校・学習</h4>
+                        <div class="category-items" id="month-study-items"></div>
+                        <button class="add-item-btn" onclick="PlannerUI.addMonthItem('study')">+ 追加</button>
+                    </div>
+                    <div class="month-category">
+                        <h4>🏋️ ライフスタイル</h4>
+                        <div class="category-items" id="month-lifestyle-items"></div>
+                        <button class="add-item-btn" onclick="PlannerUI.addMonthItem('lifestyle')">+ 追加</button>
+                    </div>
+                </div>
+
+                <!-- Weeks in Month -->
+                <div id="month-weeks-container">
+                    <!-- Weeks will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Week View -->
+            <div id="week-view" class="planner-view">
+                <div class="week-header-card">
+                    <div class="week-message">
+                        <span class="message-icon">💌</span>
+                        <input type="text" id="week-message-input" class="quote-input" 
+                            placeholder="今週の自分へのメッセージ...">
+                    </div>
+                </div>
+
+                <div class="week-grid" id="week-days-grid">
+                    <!-- 7 days will be rendered here -->
+                </div>
+
+                <div class="week-summary">
+                    <div class="summary-section">
+                        <h4>📌 進行中のタスク</h4>
+                        <div id="week-ongoing-tasks"></div>
+                    </div>
+                    <div class="summary-section">
+                        <h4>⚠️ 今週〆切のタスク</h4>
+                        <div id="week-deadline-tasks"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Goal Edit Modal -->
+    <div class="modal-overlay" id="goal-modal">
+        <div class="modal-container" style="width: 500px;">
+            <div class="modal-header">
+                <h3 id="goal-modal-title">🎯 目標を編集</h3>
+                <button class="btn-icon" onclick="PlannerUI.closeGoalModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="goal-form">
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">目標</label>
+                        <input type="text" id="goal-text" class="form-control" required
+                            placeholder="達成したい目標を入力...">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">詳細・メモ</label>
+                        <textarea id="goal-notes" class="form-control" rows="3" 
+                            placeholder="目標についての詳細やメモ..."></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <button type="button" class="btn btn-danger" id="btn-delete-goal" onclick="PlannerUI.deleteGoal()" style="display: none;">
+                            🗑️ 削除
+                        </button>
+                        <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" onclick="PlannerUI.closeGoalModal()">キャンセル</button>
+                            <button type="submit" class="btn btn-primary">💾 保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/planner.js"></script>
+
+</body>
+
+</html>

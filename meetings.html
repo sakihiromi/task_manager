@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Hub | 会議メモ・議事録</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/meetings.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+</head>
+
+<body>
+
+    <div class="meetings-container">
+
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🎙️</div>
+                <div class="logo-text">
+                    Meeting Hub
+                    <span>会議メモ・議事録</span>
+                </div>
+            </div>
+
+            <nav class="nav-section">
+                <div class="nav-label">ビュー</div>
+                <a href="index.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>ダッシュボード</span>
+                </a>
+                <a href="projects.html" class="nav-item">
+                    <span class="icon">📂</span>
+                    <span>プロジェクト</span>
+                </a>
+                <a href="planner.html" class="nav-item">
+                    <span class="icon">📅</span>
+                    <span>プランナー</span>
+                </a>
+                <a href="meetings.html" class="nav-item active">
+                    <span class="icon">🎙️</span>
+                    <span>会議メモ</span>
+                </a>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-label">Teams連携</div>
+                <div class="nav-item" id="teams-connect-btn" onclick="TeamsIntegration.connect()">
+                    <span class="icon">🔗</span>
+                    <span>Teamsに接続</span>
+                </div>
+                <div class="nav-item" onclick="TeamsIntegration.syncMeetings()">
+                    <span class="icon">🔄</span>
+                    <span>会議を同期</span>
+                </div>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-label">フィルター</div>
+                <div class="nav-item filter-item active" data-filter="all" onclick="MeetingsUI.setFilter('all')">
+                    <span class="icon">📋</span>
+                    <span>すべて</span>
+                    <span class="filter-count" id="filter-all">0</span>
+                </div>
+                <div class="nav-item filter-item" data-filter="recent" onclick="MeetingsUI.setFilter('recent')">
+                    <span class="icon">🕐</span>
+                    <span>最近</span>
+                </div>
+                <div class="nav-item filter-item" data-filter="action" onclick="MeetingsUI.setFilter('action')">
+                    <span class="icon">⚡</span>
+                    <span>アクション有</span>
+                </div>
+            </nav>
+
+            <div class="teams-status" id="teams-status">
+                <div class="status-indicator disconnected"></div>
+                <span>Teams未接続</span>
+            </div>
+
+            <div class="user-card">
+                <div class="user-info">
+                    <div class="user-avatar">S</div>
+                    <div class="user-details">
+                        <div class="user-name">Saki</div>
+                        <div class="user-level">🎙️ Meeting Master</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="meetings-main">
+
+            <!-- Header -->
+            <div class="meetings-header">
+                <div class="header-left">
+                    <h1>🎙️ 会議メモ・議事録</h1>
+                    <p class="header-subtitle">Teams連携で自動書き起こし・要約・議事録作成</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="record-btn" onclick="MeetingsUI.startRecording()">
+                        🎤 マイク録音
+                    </button>
+                    <button class="btn btn-secondary" id="system-record-btn" onclick="MeetingsUI.startSystemAudioRecording()">
+                        🖥️ システム音声
+                    </button>
+                    <button class="btn btn-primary" onclick="MeetingsUI.openNewMeetingModal()">
+                        + 新規会議メモ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Recording Banner -->
+            <div class="recording-banner" id="live-recording-banner">
+                <div class="recording-indicator">
+                    <div class="recording-dot"></div>
+                    <span class="recording-type">🎤 マイクで録音中</span>
+                </div>
+                <div class="recording-time" id="recording-time">00:00</div>
+                <button class="btn btn-danger" onclick="MeetingsUI.stopRecording()">
+                    ⏹️ 録音停止
+                </button>
+            </div>
+
+            <!-- Standalone Mode Banner -->
+            <div class="standalone-banner" id="standalone-banner">
+                <div class="banner-icon">🎙️</div>
+                <div class="banner-content">
+                    <h3>スタンドアロンモード</h3>
+                    <p>Teams不要！ブラウザで直接録音・書き起こし・要約ができます</p>
+                    <ul class="feature-list">
+                        <li>🎤 <strong>マイク録音</strong>: 自分の声やスピーカーからの音声を録音</li>
+                        <li>🖥️ <strong>システム音声</strong>: イヤホン使用中でもPCの音声を録音（Teamsなど）</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Teams Integration Banner (Optional) -->
+            <div class="teams-banner collapsed" id="teams-banner">
+                <div class="banner-toggle" onclick="document.getElementById('teams-banner').classList.toggle('collapsed')">
+                    <span>🔗 Teams連携（オプション）</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="banner-content">
+                    <p>Teamsの会議録画から自動で書き起こし・要約・議事録を作成できます</p>
+                    <button class="btn btn-secondary" onclick="TeamsIntegration.connect()">
+                        Teamsに接続
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <div class="action-card" onclick="MeetingsUI.openTranscriptionModal()">
+                    <div class="action-icon">📝</div>
+                    <div class="action-title">書き起こし</div>
+                    <div class="action-desc">音声/動画から文字起こし</div>
+                </div>
+                <div class="action-card" onclick="MeetingsUI.openSummarizeModal()">
+                    <div class="action-icon">✨</div>
+                    <div class="action-title">AI要約</div>
+                    <div class="action-desc">会議内容をAIで要約</div>
+                </div>
+                <div class="action-card" onclick="MeetingsUI.openMinutesModal()">
+                    <div class="action-icon">📋</div>
+                    <div class="action-title">議事録作成</div>
+                    <div class="action-desc">フォーマット済み議事録</div>
+                </div>
+                <div class="action-card" onclick="MeetingsUI.openActionItemsModal()">
+                    <div class="action-icon">⚡</div>
+                    <div class="action-title">アクション抽出</div>
+                    <div class="action-desc">次のアクションを自動抽出</div>
+                </div>
+            </div>
+
+            <!-- Meetings List -->
+            <div class="meetings-section">
+                <div class="section-header">
+                    <h2>📂 会議一覧</h2>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" placeholder="会議を検索..." 
+                            id="meeting-search" oninput="MeetingsUI.search(this.value)">
+                    </div>
+                </div>
+                <div class="meetings-list" id="meetings-list">
+                    <!-- Meetings will be rendered here -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- New Meeting Modal -->
+    <div class="modal-overlay" id="meeting-modal">
+        <div class="modal-container" style="width: 700px;">
+            <div class="modal-header">
+                <h3 id="meeting-modal-title">🎙️ 新規会議メモ</h3>
+                <button class="btn-icon" onclick="MeetingsUI.closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="meeting-form">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">会議タイトル</label>
+                            <input type="text" id="meeting-title" class="form-control" required
+                                placeholder="例: 週次定例会議">
+                        </div>
+                        <div>
+                            <label class="form-label">日時</label>
+                            <input type="datetime-local" id="meeting-datetime" class="form-control">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">プロジェクト</label>
+                            <input type="text" id="meeting-project" class="form-control" 
+                                placeholder="関連プロジェクト名">
+                        </div>
+                        <div>
+                            <label class="form-label">参加者</label>
+                            <input type="text" id="meeting-participants" class="form-control" 
+                                placeholder="山田, 佐藤, 田中">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">会議メモ / 書き起こし</label>
+                        <textarea id="meeting-transcript" class="form-control" rows="8" 
+                            placeholder="会議の内容をここに入力、または音声ファイルをドラッグ＆ドロップ..."></textarea>
+                    </div>
+
+                    <div class="ai-actions" style="margin-bottom: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.generateSummary()">
+                            ✨ AI要約を生成
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.generateMinutes()">
+                            📋 議事録を生成
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.extractActions()">
+                            ⚡ アクション抽出
+                        </button>
+                    </div>
+
+                    <div style="margin-bottom: 20px;" id="summary-section" style="display: none;">
+                        <label class="form-label">AI要約</label>
+                        <div id="meeting-summary" class="generated-content"></div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;" id="minutes-section" style="display: none;">
+                        <label class="form-label">議事録</label>
+                        <div id="meeting-minutes" class="generated-content"></div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">アクションアイテム</label>
+                        <div id="action-items-list" class="action-items-container">
+                            <!-- Action items will be added here -->
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.addActionItem()" 
+                            style="width: 100%; margin-top: 12px;">
+                            + アクションを追加
+                        </button>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <button type="button" class="btn btn-danger" id="btn-delete-meeting" 
+                            onclick="MeetingsUI.deleteMeeting()" style="display: none;">
+                            🗑️ 削除
+                        </button>
+                        <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" onclick="MeetingsUI.closeModal()">キャンセル</button>
+                            <button type="submit" class="btn btn-primary">💾 保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transcription Modal -->
+    <div class="modal-overlay" id="transcription-modal">
+        <div class="modal-container" style="width: 600px;">
+            <div class="modal-header">
+                <h3>📝 音声書き起こし</h3>
+                <button class="btn-icon" onclick="document.getElementById('transcription-modal').classList.remove('active')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">🎵</div>
+                    <p>音声/動画ファイルをドラッグ＆ドロップ</p>
+                    <p class="upload-hint">または</p>
+                    <input type="file" id="audio-file" accept="audio/*,video/*" style="display: none;">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('audio-file').click()">
+                        ファイルを選択
+                    </button>
+                </div>
+                <div class="transcription-progress" id="transcription-progress" style="display: none;">
+                    <div class="progress-icon">⏳</div>
+                    <p id="transcription-progress-text">書き起こし中...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="transcription-progress-bar"></div>
+                    </div>
+                </div>
+                <div class="transcription-result" id="transcription-result" style="display: none;">
+                    <label class="form-label">書き起こし結果</label>
+                    <textarea id="transcription-text" class="form-control" rows="10" readonly></textarea>
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.copyTranscription()">
+                            📋 コピー
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="MeetingsUI.createMeetingFromTranscription()">
+                            🎙️ 会議メモを作成
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/meetings.js"></script>
+
+</body>
+
+</html>
