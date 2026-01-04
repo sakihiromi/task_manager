@@ -372,8 +372,13 @@ const PlannerUI = {
         return `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}`;
     },
 
-    // カテゴリの折りたたみ状態
-    collapsedCategories: {},
+    // カテゴリの折りたたみ状態（localStorageから復元）
+    collapsedCategories: JSON.parse(localStorage.getItem('planner_collapsed_categories') || '{}'),
+    
+    // カテゴリの折りたたみ状態を保存
+    saveCollapsedCategories() {
+        localStorage.setItem('planner_collapsed_categories', JSON.stringify(this.collapsedCategories));
+    },
 
     // ラベル設定
     LABELS: {
@@ -732,6 +737,7 @@ const PlannerUI = {
 
     toggleCategoryCollapse(category) {
         this.collapsedCategories[category] = !this.collapsedCategories[category];
+        this.saveCollapsedCategories();
         const categoryEl = document.getElementById(`category-${category}`);
         if (categoryEl) {
             categoryEl.classList.toggle('collapsed', this.collapsedCategories[category]);
