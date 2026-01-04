@@ -1,10 +1,10 @@
 // ===================================
-// データ管理モジュール - Enhanced with Memos
+// データ管理モジュール - Enhanced with Server Persistence
 // ===================================
 
 // データ構造
 const TaskManager = {
-    // ローカルストレージのキー
+    // ローカルストレージのキー（フォールバック用）
     STORAGE_KEY: 'task_dashboard_data_v2',
     MEMO_STORAGE_KEY: 'task_dashboard_memos_v1',
 
@@ -12,14 +12,157 @@ const TaskManager = {
     tasks: [],
     // ミーティングメモ
     memos: [],
+    
+    // サーバー同期フラグ
+    _serverSyncEnabled: true,
+    _saveDebounceTimer: null,
+    _memoSaveDebounceTimer: null,
 
     // 初期化
-    init() {
-        this.loadFromStorage();
-        this.loadMemosFromStorage();
+    async init() {
+        // まずサーバーからデータを読み込み
+        const serverLoaded = await this.loadFromServer();
+        
+        if (!serverLoaded) {
+            // サーバーからの読み込みに失敗した場合はローカルストレージを使用
+            console.log('📦 サーバー接続失敗 - ローカルストレージを使用');
+            this.loadFromStorage();
+            this.loadMemosFromStorage();
+        }
+        
+        // 古いカテゴリを新しいカテゴリに移行
+        this.migrateTaskCategories();
     },
 
-    // LocalStorageからデータを読み込み
+    // certification -> study への移行
+    migrateTaskCategories() {
+        let migrated = false;
+        this.tasks.forEach(task => {
+            if (task.category === 'certification') {
+                task.category = 'study';
+                migrated = true;
+            }
+        });
+        if (migrated) {
+            console.log('📦 タスクカテゴリを移行しました (certification -> study)');
+            this.saveToStorage();
+        }
+    },
+
+    // サーバーからデータを読み込み
+    async loadFromServer() {
+        try {
+            const response = await fetch('/api/data');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            
+            // サーバーにデータがある場合
+            if (data.tasks && data.tasks.length > 0) {
+                this.tasks = data.tasks;
+                console.log(`✅ サーバーからタスクを読み込み: ${this.tasks.length}件`);
+            } else {
+                // サーバーにデータがない場合、ローカルから移行
+                this.loadFromStorage();
+                if (this.tasks.length > 0) {
+                    console.log(`📤 ローカルのタスクをサーバーに移行: ${this.tasks.length}件`);
+                    this.saveToServer();
+                }
+            }
+            
+            if (data.memos && data.memos.length > 0) {
+                this.memos = data.memos;
+                console.log(`✅ サーバーからメモを読み込み: ${this.memos.length}件`);
+            } else {
+                this.loadMemosFromStorage();
+                if (this.memos.length > 0) {
+                    console.log(`📤 ローカルのメモをサーバーに移行: ${this.memos.length}件`);
+                    this.saveMemosToServer();
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.warn('⚠️ サーバーからのデータ読み込みに失敗:', error.message);
+            return false;
+        }
+    },
+
+    // サーバーにタスクを保存（デバウンス付き）
+    saveToServer() {
+        if (this._saveDebounceTimer) {
+            clearTimeout(this._saveDebounceTimer);
+        }
+        
+        this._saveDebounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch('/api/data/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.tasks)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                console.log('💾 タスクをサーバーに保存しました');
+            } catch (error) {
+                console.warn('⚠️ サーバー保存に失敗、ローカルに保存:', error.message);
+                // フォールバック: ローカルストレージに保存
+                this._saveToLocalStorage();
+            }
+        }, 300); // 300ms デバウンス
+        
+        // ローカルにも即座に保存（バックアップ）
+        this._saveToLocalStorage();
+    },
+
+    // サーバーにメモを保存（デバウンス付き）
+    saveMemosToServer() {
+        if (this._memoSaveDebounceTimer) {
+            clearTimeout(this._memoSaveDebounceTimer);
+        }
+        
+        this._memoSaveDebounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch('/api/data/memos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.memos)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                console.log('💾 メモをサーバーに保存しました');
+            } catch (error) {
+                console.warn('⚠️ メモのサーバー保存に失敗:', error.message);
+                this._saveMemosToLocalStorage();
+            }
+        }, 300);
+        
+        this._saveMemosToLocalStorage();
+    },
+
+    // ローカルストレージへの保存（内部用）
+    _saveToLocalStorage() {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.tasks));
+        } catch (error) {
+            console.error('ローカル保存に失敗:', error);
+        }
+    },
+
+    _saveMemosToLocalStorage() {
+        try {
+            localStorage.setItem(this.MEMO_STORAGE_KEY, JSON.stringify(this.memos));
+        } catch (error) {
+            console.error('メモのローカル保存に失敗:', error);
+        }
+    },
+
+    // LocalStorageからデータを読み込み（フォールバック用）
     loadFromStorage() {
         const data = localStorage.getItem(this.STORAGE_KEY);
         if (data) {
@@ -45,13 +188,10 @@ const TaskManager = {
         }
     },
 
-    // LocalStorageにデータを保存
+    // LocalStorageにデータを保存（サーバー保存も実行）
     saveToStorage() {
-        try {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.tasks));
-        } catch (error) {
-            console.error('データの保存に失敗:', error);
-        }
+        this._saveToLocalStorage();
+        this.saveToServer();
     },
 
     // タスクを追加
@@ -224,11 +364,8 @@ const TaskManager = {
     },
 
     saveMemosToStorage() {
-        try {
-            localStorage.setItem(this.MEMO_STORAGE_KEY, JSON.stringify(this.memos));
-        } catch (error) {
-            console.error('メモの保存に失敗:', error);
-        }
+        this._saveMemosToLocalStorage();
+        this.saveMemosToServer();
     },
 
     addMemo(memoData) {
@@ -297,7 +434,7 @@ const TaskManager = {
     }
 };
 
-// カテゴリー定義 - Extended
+// カテゴリー定義 - 統一版
 const CATEGORIES = {
     work: {
         id: 'work',
@@ -311,16 +448,14 @@ const CATEGORIES = {
         name: '研究',
         icon: '🔬',
         color: '#10b981',
-        description: '研究・論文・実験関連',
-        subcategories: ['experiment', 'paper', 'survey']
+        description: '研究・論文・実験関連'
     },
-    certification: {
-        id: 'certification',
-        name: '資格試験',
+    study: {
+        id: 'study',
+        name: '学習',
         icon: '📚',
         color: '#f59e0b',
-        description: '資格取得・試験勉強',
-        subcategories: ['study', 'practice', 'mock']
+        description: '学習・資格試験・スキルアップ'
     },
     private: {
         id: 'private',
@@ -331,16 +466,16 @@ const CATEGORIES = {
     }
 };
 
-// サブカテゴリー定義 - Extended
+// サブカテゴリー定義
 const SUBCATEGORIES = {
     // Research
     experiment: { id: 'experiment', name: '実験', icon: '🧪' },
     paper: { id: 'paper', name: '論文', icon: '📄' },
     survey: { id: 'survey', name: '調査', icon: '🔍' },
-    // Certification
-    study: { id: 'study', name: '学習', icon: '📖' },
+    // Study
+    reading: { id: 'reading', name: '読書', icon: '📖' },
     practice: { id: 'practice', name: '演習', icon: '✏️' },
-    mock: { id: 'mock', name: '模試', icon: '📝' }
+    certification: { id: 'certification', name: '資格試験', icon: '📝' }
 };
 
 // 優先度定義
@@ -357,9 +492,95 @@ const PRIORITIES = {
 const ProjectsManager = {
     STORAGE_KEY: 'projects_data_v1',
     projects: [],
+    _saveDebounceTimer: null,
 
-    init() {
-        this.loadFromStorage();
+    async init() {
+        // まずサーバーからデータを読み込み
+        const serverLoaded = await this.loadFromServer();
+        
+        if (!serverLoaded) {
+            console.log('📦 プロジェクト: サーバー接続失敗 - ローカルストレージを使用');
+            this.loadFromStorage();
+        }
+        
+        // 古いカテゴリを新しいカテゴリに移行
+        this.migrateCategories();
+    },
+
+    // certification -> study への移行
+    migrateCategories() {
+        let migrated = false;
+        this.projects.forEach(project => {
+            if (project.category === 'certification') {
+                project.category = 'study';
+                migrated = true;
+                console.log(`📦 カテゴリ移行: ${project.name} (certification -> study)`);
+            }
+        });
+        if (migrated) {
+            this.saveToStorage();
+        }
+    },
+
+    async loadFromServer() {
+        try {
+            const response = await fetch('/api/data/projects');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                this.projects = data;
+                console.log(`✅ サーバーからプロジェクトを読み込み: ${this.projects.length}件`);
+            } else {
+                // サーバーにデータがない場合、ローカルから移行
+                this.loadFromStorage();
+                if (this.projects.length > 0) {
+                    console.log(`📤 ローカルのプロジェクトをサーバーに移行: ${this.projects.length}件`);
+                    this.saveToServer();
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.warn('⚠️ プロジェクトのサーバー読み込みに失敗:', error.message);
+            return false;
+        }
+    },
+
+    saveToServer() {
+        if (this._saveDebounceTimer) {
+            clearTimeout(this._saveDebounceTimer);
+        }
+        
+        this._saveDebounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch('/api/data/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.projects)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                console.log('💾 プロジェクトをサーバーに保存しました');
+            } catch (error) {
+                console.warn('⚠️ プロジェクトのサーバー保存に失敗:', error.message);
+            }
+        }, 300);
+        
+        // ローカルにも即座に保存（バックアップ）
+        this._saveToLocalStorage();
+    },
+
+    _saveToLocalStorage() {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.projects));
+        } catch (error) {
+            console.error('プロジェクトのローカル保存に失敗:', error);
+        }
     },
 
     loadFromStorage() {
@@ -377,11 +598,8 @@ const ProjectsManager = {
     },
 
     saveToStorage() {
-        try {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.projects));
-        } catch (error) {
-            console.error('プロジェクトデータの保存に失敗:', error);
-        }
+        this._saveToLocalStorage();
+        this.saveToServer();
     },
 
     generateId() {
@@ -450,14 +668,17 @@ const ProjectsManager = {
         return this.projects.filter(p => p.status === status);
     },
 
-    addTaskToProject(projectId, taskTitle) {
+    addTaskToProject(projectId, taskData) {
         const project = this.getProject(projectId);
         if (project) {
             const task = {
-                id: 'task_' + Date.now(),
-                title: taskTitle,
+                id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                title: typeof taskData === 'string' ? taskData : taskData.title,
                 completed: false,
-                priority: 'medium',
+                priority: (typeof taskData === 'object' && taskData.priority) || 'medium',
+                deadline: (typeof taskData === 'object' && taskData.deadline) || null,
+                deadlineType: (typeof taskData === 'object' && taskData.deadlineType) || 'none', // 'none', 'date', 'month', 'text'
+                description: (typeof taskData === 'object' && taskData.description) || '',
                 createdAt: new Date().toISOString()
             };
             project.tasks.push(task);
@@ -466,6 +687,92 @@ const ProjectsManager = {
             return task;
         }
         return null;
+    },
+
+    updateTaskInProject(projectId, taskId, updates) {
+        const project = this.getProject(projectId);
+        if (project) {
+            const taskIndex = project.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex !== -1) {
+                project.tasks[taskIndex] = {
+                    ...project.tasks[taskIndex],
+                    ...updates
+                };
+                project.updatedAt = new Date().toISOString();
+                this.saveToStorage();
+                return project.tasks[taskIndex];
+            }
+        }
+        return null;
+    },
+
+    deleteTaskFromProject(projectId, taskId) {
+        const project = this.getProject(projectId);
+        if (project) {
+            const taskIndex = project.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex !== -1) {
+                project.tasks.splice(taskIndex, 1);
+                project.updatedAt = new Date().toISOString();
+                this.saveToStorage();
+                return true;
+            }
+        }
+        return false;
+    },
+
+    // プロジェクトの全タスクを取得（ダッシュボード連携用）
+    getAllProjectTasks() {
+        const allTasks = [];
+        this.projects.forEach(project => {
+            project.tasks.forEach(task => {
+                allTasks.push({
+                    ...task,
+                    projectId: project.id,
+                    projectName: project.name,
+                    projectIcon: project.icon,
+                    category: project.category,
+                    source: 'project'
+                });
+            });
+        });
+        return allTasks;
+    },
+
+    // 期限でタスクを取得（プランナー連携用）
+    getTasksByDeadline(dateStr) {
+        const tasks = [];
+        this.projects.forEach(project => {
+            project.tasks.forEach(task => {
+                if (task.deadline === dateStr && !task.completed) {
+                    tasks.push({
+                        ...task,
+                        projectId: project.id,
+                        projectName: project.name,
+                        category: project.category
+                    });
+                }
+            });
+        });
+        return tasks;
+    },
+
+    // 月の期限タスクを取得
+    getTasksByMonth(year, month) {
+        const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+        const tasks = [];
+        this.projects.forEach(project => {
+            project.tasks.forEach(task => {
+                if (task.deadline && task.deadline.startsWith(monthStr) && !task.completed) {
+                    tasks.push({
+                        ...task,
+                        projectId: project.id,
+                        projectName: project.name,
+                        category: project.category
+                    });
+                }
+            });
+        });
+        return tasks;
     },
 
     toggleTaskInProject(projectId, taskId) {
@@ -542,9 +849,9 @@ const ProjectsManager = {
 
 const DataSync = {
     // 全データを初期化
-    initAll() {
-        TaskManager.init();
-        ProjectsManager.init();
+    async initAll() {
+        await TaskManager.init();
+        await ProjectsManager.init();
     },
 
     // タスクの期限でグループ化
@@ -664,3 +971,77 @@ const DataSync = {
         return project ? project.category : null;
     }
 };
+
+// ===================================
+// ユーザー設定管理
+// ===================================
+
+const UserSettings = {
+    STORAGE_KEY: 'user_settings_v1',
+    
+    defaults: {
+        userName: 'User'
+    },
+    
+    settings: null,
+    
+    init() {
+        this.load();
+        this.applyToUI();
+    },
+    
+    load() {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if (stored) {
+            try {
+                this.settings = { ...this.defaults, ...JSON.parse(stored) };
+            } catch (e) {
+                this.settings = { ...this.defaults };
+            }
+        } else {
+            this.settings = { ...this.defaults };
+        }
+    },
+    
+    save() {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.settings));
+    },
+    
+    get(key) {
+        return this.settings[key] ?? this.defaults[key];
+    },
+    
+    set(key, value) {
+        this.settings[key] = value;
+        this.save();
+    },
+    
+    applyToUI() {
+        const userName = this.get('userName');
+        const userNameEl = document.getElementById('user-name');
+        const userAvatarEl = document.getElementById('user-avatar');
+        
+        if (userNameEl) {
+            userNameEl.textContent = userName;
+        }
+        if (userAvatarEl) {
+            userAvatarEl.textContent = userName.charAt(0).toUpperCase();
+        }
+    }
+};
+
+// ユーザー名編集関数（グローバル）
+function editUserName() {
+    const currentName = UserSettings.get('userName');
+    const newName = prompt('ユーザー名を入力してください:', currentName);
+    
+    if (newName !== null && newName.trim() !== '') {
+        UserSettings.set('userName', newName.trim());
+        UserSettings.applyToUI();
+    }
+}
+
+// ページ読み込み時にユーザー設定を適用
+document.addEventListener('DOMContentLoaded', () => {
+    UserSettings.init();
+});

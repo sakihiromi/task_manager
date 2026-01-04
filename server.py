@@ -8,6 +8,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 
+# データ保存先ディレクトリ
+DATA_DIR = Path(__file__).resolve().parent / 'data'
+DATA_DIR.mkdir(exist_ok=True)
+
+# データファイルのパス
+TASKS_FILE = DATA_DIR / 'tasks.json'
+MEMOS_FILE = DATA_DIR / 'memos.json'
+PROJECTS_FILE = DATA_DIR / 'projects.json'
+MEETINGS_FILE = DATA_DIR / 'meetings.json'
+PLANNER_FILE = DATA_DIR / 'planner.json'
+
 # .envファイルを読み込む (anken/.env を優先)
 # 優先順位: 1. anken/.env  2. task_management_dashboard/.env  3. 環境変数
 ENV_LOADED = False
@@ -34,7 +45,98 @@ except Exception as e:
 
 PORT = int(os.environ.get('TASK_DASHBOARD_PORT', 8009))
 
+def load_json_file(filepath):
+    """JSONファイルを読み込む"""
+    if filepath.exists():
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"⚠️ Error loading {filepath}: {e}")
+    return None
+
+def save_json_file(filepath, data):
+    """JSONファイルに保存する"""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except IOError as e:
+        print(f"⚠️ Error saving {filepath}: {e}")
+        return False
+
+
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # データ読み込みAPI
+        if self.path == '/api/data':
+            try:
+                data = {
+                    'tasks': load_json_file(TASKS_FILE) or [],
+                    'memos': load_json_file(MEMOS_FILE) or [],
+                    'projects': load_json_file(PROJECTS_FILE) or []
+                }
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        elif self.path == '/api/data/tasks':
+            try:
+                tasks = load_json_file(TASKS_FILE) or []
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                self.wfile.write(json.dumps(tasks, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        elif self.path == '/api/data/memos':
+            try:
+                memos = load_json_file(MEMOS_FILE) or []
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                self.wfile.write(json.dumps(memos, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        elif self.path == '/api/data/projects':
+            try:
+                projects = load_json_file(PROJECTS_FILE) or []
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                self.wfile.write(json.dumps(projects, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        elif self.path == '/api/data/meetings':
+            try:
+                meetings = load_json_file(MEETINGS_FILE) or []
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                self.wfile.write(json.dumps(meetings, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        elif self.path == '/api/data/planner':
+            try:
+                planner = load_json_file(PLANNER_FILE) or {}
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                self.wfile.write(json.dumps(planner, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        else:
+            # 静的ファイルを提供
+            super().do_GET()
+    
     def do_POST(self):
         # APIエンドポイント: /api/generate
         if self.path == '/api/generate':
@@ -397,6 +499,117 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 print(f"Transcription error: {e}")
                 self.send_error_response(500, str(e))
         
+        # APIエンドポイント: /api/data (データ保存)
+        elif self.path == '/api/data':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data)
+                
+                # 各データタイプを保存
+                if 'tasks' in data:
+                    save_json_file(TASKS_FILE, data['tasks'])
+                if 'memos' in data:
+                    save_json_file(MEMOS_FILE, data['memos'])
+                if 'projects' in data:
+                    save_json_file(PROJECTS_FILE, data['projects'])
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                
+            except json.JSONDecodeError as e:
+                self.send_error_response(400, f"Invalid JSON: {str(e)}")
+            except Exception as e:
+                self.send_error_response(500, str(e))
+
+        # APIエンドポイント: /api/data/tasks (タスク保存)
+        elif self.path == '/api/data/tasks':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                tasks = json.loads(post_data)
+                save_json_file(TASKS_FILE, tasks)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_error_response(500, str(e))
+
+        # APIエンドポイント: /api/data/memos (メモ保存)
+        elif self.path == '/api/data/memos':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                memos = json.loads(post_data)
+                save_json_file(MEMOS_FILE, memos)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_error_response(500, str(e))
+
+        # APIエンドポイント: /api/data/projects (プロジェクト保存)
+        elif self.path == '/api/data/projects':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                projects = json.loads(post_data)
+                save_json_file(PROJECTS_FILE, projects)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_error_response(500, str(e))
+
+        # APIエンドポイント: /api/data/meetings (会議保存)
+        elif self.path == '/api/data/meetings':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                meetings = json.loads(post_data)
+                save_json_file(MEETINGS_FILE, meetings)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_error_response(500, str(e))
+
+        # APIエンドポイント: /api/data/planner (プランナー保存)
+        elif self.path == '/api/data/planner':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                planner = json.loads(post_data)
+                save_json_file(PLANNER_FILE, planner)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_error_response(500, str(e))
+        
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -418,6 +631,11 @@ print(f"📍 API Endpoints:")
 print(f"   - /api/generate    (AI Task Planning)")
 print(f"   - /api/summarize   (Meeting Summarization)")
 print(f"   - /api/transcribe  (Whisper Speech-to-Text)")
+print(f"   - /api/data        (Data Storage - GET/POST)")
+print("")
+print(f"💾 Data Storage:")
+print(f"   - {DATA_DIR}/")
+print(f"   - tasks.json, memos.json, projects.json")
 print("")
 
 api_key = os.environ.get('OPENAI_API_KEY', '')

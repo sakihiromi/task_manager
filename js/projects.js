@@ -14,7 +14,7 @@ const ProjectsUI = {
     CATEGORY_CONFIG: {
         work: { label: '仕事', icon: '💼', color: '#60a5fa' },
         research: { label: '研究', icon: '🔬', color: '#c084fc' },
-        certification: { label: '資格試験', icon: '📚', color: '#4ade80' },
+        study: { label: '学習', icon: '📚', color: '#4ade80' },
         private: { label: 'プライベート', icon: '🏠', color: '#fb923c' }
     },
 
@@ -26,8 +26,8 @@ const ProjectsUI = {
         archived: { label: '📦 アーカイブ', color: '#9ca3af' }
     },
 
-    init() {
-        ProjectsManager.init();
+    async init() {
+        await ProjectsManager.init();
         this.attachEventListeners();
         this.renderAll();
         this.updateCounts();
@@ -110,7 +110,7 @@ const ProjectsUI = {
             all: '📂 すべてのプロジェクト',
             work: '💼 仕事のプロジェクト',
             research: '🔬 研究プロジェクト',
-            certification: '📚 資格試験プロジェクト',
+            study: '📚 学習プロジェクト',
             private: '🏠 プライベートプロジェクト'
         };
         document.getElementById('page-title').textContent = titles[category] || titles.all;
@@ -119,7 +119,7 @@ const ProjectsUI = {
         
         // Show/hide category sections based on filter
         if (this.currentView === 'board') {
-            const categories = ['work', 'research', 'certification', 'private'];
+            const categories = ['work', 'research', 'study', 'private'];
             categories.forEach(cat => {
                 const section = document.getElementById(`category-section-${cat}`);
                 if (section) {
@@ -194,7 +194,7 @@ const ProjectsUI = {
         const container = document.getElementById('category-view-content');
         if (!container) return;
 
-        const categories = ['work', 'research', 'certification', 'private'];
+        const categories = ['work', 'research', 'study', 'private'];
         let html = '';
 
         categories.forEach(cat => {
@@ -287,7 +287,7 @@ const ProjectsUI = {
 
     renderBoardView(projects) {
         const container = document.getElementById('board-view');
-        const categories = ['work', 'research', 'certification', 'private'];
+        const categories = ['work', 'research', 'study', 'private'];
         
         let html = '';
         
@@ -396,15 +396,93 @@ const ProjectsUI = {
         tbody.innerHTML = projects.map(p => this.createProjectTableRowHTML(p)).join('');
     },
 
+    // 展開されたプロジェクトを追跡
+    expandedProjects: {},
+
     createProjectCardHTML(project) {
         const progress = ProjectsManager.getProjectProgress(project.id);
         const category = this.CATEGORY_CONFIG[project.category];
+        const isExpanded = this.expandedProjects[project.id];
+        const completedTasks = project.tasks.filter(t => t.completed).length;
+
+        let tasksHtml = '';
+        if (isExpanded && project.tasks.length > 0) {
+            const statusLabels = {
+                completed: { label: '完了', color: '#4ade80', bg: 'rgba(74, 222, 128, 0.2)' },
+                in_progress: { label: '進行中', color: '#60a5fa', bg: 'rgba(96, 165, 250, 0.2)' },
+                not_started: { label: '未着手', color: '#9ca3af', bg: 'rgba(156, 163, 175, 0.2)' }
+            };
+            const priorityConfig = {
+                high: { label: '高', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.2)' },
+                medium: { label: '中', color: '#eab308', bg: 'rgba(234, 179, 8, 0.2)' },
+                low: { label: '低', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.2)' }
+            };
+
+            tasksHtml = `
+                <div class="project-card-tasks-table" onclick="event.stopPropagation();">
+                    <div class="tasks-table-header">
+                        <div class="tasks-col tasks-col-name">タスク名</div>
+                        <div class="tasks-col tasks-col-status">ステータス</div>
+                        <div class="tasks-col tasks-col-deadline">期限</div>
+                        <div class="tasks-col tasks-col-priority">優先度</div>
+                        <div class="tasks-col tasks-col-actions"></div>
+                    </div>
+                    <div class="tasks-table-body">
+                        ${project.tasks.map(task => {
+                            const status = task.completed ? 'completed' : 'not_started';
+                            const statusInfo = statusLabels[status];
+                            const priority = priorityConfig[task.priority] || priorityConfig.medium;
+                            const deadlineDisplay = this.formatTaskDeadlineShort(task);
+                            
+                            return `
+                                <div class="tasks-table-row ${task.completed ? 'completed' : ''}">
+                                    <div class="tasks-col tasks-col-name">
+                                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
+                                             onclick="ProjectsUI.toggleTaskFromCard('${project.id}', '${task.id}')">
+                                            ${task.completed ? '✓' : ''}
+                                        </div>
+                                        <span class="task-title-text">${this.escapeHTML(task.title)}</span>
+                                    </div>
+                                    <div class="tasks-col tasks-col-status">
+                                        <span class="status-pill" style="background: ${statusInfo.bg}; color: ${statusInfo.color};">
+                                            ${statusInfo.label}
+                                        </span>
+                                    </div>
+                                    <div class="tasks-col tasks-col-deadline">
+                                        ${deadlineDisplay || '-'}
+                                    </div>
+                                    <div class="tasks-col tasks-col-priority">
+                                        <span class="priority-pill" style="background: ${priority.bg}; color: ${priority.color};">
+                                            ${priority.label}
+                                        </span>
+                                    </div>
+                                    <div class="tasks-col tasks-col-actions">
+                                        <button class="btn-icon-sm" onclick="ProjectsUI.openTaskEditor('${project.id}', '${task.id}')" title="編集">✏️</button>
+                                        <button class="btn-icon-sm" onclick="ProjectsUI.deleteTaskFromCard('${project.id}', '${task.id}')" title="削除">🗑️</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="tasks-table-footer">
+                        <span class="complete-count">COMPLETE ${completedTasks}/${project.tasks.length}</span>
+                    </div>
+                    <div class="project-card-add-task">
+                        <input type="text" class="quick-task-input" id="quick-task-${project.id}" 
+                               placeholder="+ 新しいタスク..."
+                               onkeypress="if(event.key==='Enter'){ProjectsUI.addTaskFromCard('${project.id}'); event.preventDefault();}">
+                    </div>
+                </div>
+            `;
+        }
 
         return `
-            <div class="project-card" onclick="ProjectsUI.openDetailModal('${project.id}')">
-                <div class="project-card-header">
+            <div class="project-card ${isExpanded ? 'expanded' : ''}" data-project-id="${project.id}">
+                <div class="project-card-header" onclick="ProjectsUI.toggleProjectExpand('${project.id}')">
+                    <span class="project-toggle-icon">${isExpanded ? '▼' : '▶'}</span>
                     <span class="project-card-icon">${project.icon}</span>
                     <span class="project-card-title">${this.escapeHTML(project.name)}</span>
+                    <button class="btn-icon-sm project-edit-btn" onclick="event.stopPropagation(); ProjectsUI.openDetailModal('${project.id}')" title="詳細">⚙️</button>
                 </div>
                 <div class="project-card-meta">
                     <span class="project-card-tag category-${project.category}">${category.label}</span>
@@ -419,8 +497,37 @@ const ProjectsUI = {
                         <div class="progress-text">${progress}%</div>
                     </div>
                 ` : ''}
+                ${tasksHtml}
             </div>
         `;
+    },
+
+    toggleProjectExpand(projectId) {
+        this.expandedProjects[projectId] = !this.expandedProjects[projectId];
+        this.renderAll();
+    },
+
+    toggleTaskFromCard(projectId, taskId) {
+        ProjectsManager.toggleTaskInProject(projectId, taskId);
+        this.renderAll();
+    },
+
+    addTaskFromCard(projectId) {
+        const input = document.getElementById(`quick-task-${projectId}`);
+        if (!input) return;
+        
+        const title = input.value.trim();
+        if (!title) return;
+        
+        ProjectsManager.addTaskToProject(projectId, { title, priority: 'medium' });
+        input.value = '';
+        this.renderAll();
+    },
+
+    deleteTaskFromCard(projectId, taskId) {
+        if (!confirm('このタスクを削除しますか？')) return;
+        ProjectsManager.deleteTaskFromProject(projectId, taskId);
+        this.renderAll();
     },
 
     createProjectListItemHTML(project) {
@@ -483,13 +590,13 @@ const ProjectsUI = {
         const all = ProjectsManager.getAllProjects().length;
         const work = ProjectsManager.getCategoryCount('work');
         const research = ProjectsManager.getCategoryCount('research');
-        const certification = ProjectsManager.getCategoryCount('certification');
+        const study = ProjectsManager.getCategoryCount('study');
         const privateCount = ProjectsManager.getCategoryCount('private');
 
         document.getElementById('count-all').textContent = all;
         document.getElementById('count-work').textContent = work;
         document.getElementById('count-research').textContent = research;
-        document.getElementById('count-certification').textContent = certification;
+        document.getElementById('count-study').textContent = study;
         document.getElementById('count-private').textContent = privateCount;
     },
 
@@ -586,14 +693,171 @@ const ProjectsUI = {
             return;
         }
 
-        container.innerHTML = project.tasks.map(task => `
-            <div class="detail-task-item">
-                <div class="detail-task-checkbox ${task.completed ? 'completed' : ''}" 
-                     onclick="ProjectsUI.toggleTask('${project.id}', '${task.id}')"></div>
-                <span class="detail-task-name ${task.completed ? 'completed' : ''}">${this.escapeHTML(task.title)}</span>
-                <span class="detail-task-priority ${task.priority}">${task.priority === 'high' ? '重要' : task.priority === 'medium' ? '通常' : '低'}</span>
+        const statusLabels = { 
+            completed: { label: '完了', color: '#4ade80' },
+            in_progress: { label: '進行中', color: '#60a5fa' },
+            not_started: { label: '未着手', color: '#9ca3af' }
+        };
+        const priorityLabels = { high: '高', medium: '中', low: '低' };
+        const priorityColors = { high: '#ef4444', medium: '#eab308', low: '#22c55e' };
+
+        // Notion風テーブルヘッダー
+        let html = `
+            <div class="task-table">
+                <div class="task-table-header">
+                    <div class="task-col task-col-name">タスク名</div>
+                    <div class="task-col task-col-status">ステータス</div>
+                    <div class="task-col task-col-deadline">期限</div>
+                    <div class="task-col task-col-priority">優先度</div>
+                    <div class="task-col task-col-actions"></div>
             </div>
-        `).join('');
+                <div class="task-table-body" id="task-table-body-${project.id}">
+        `;
+
+        project.tasks.forEach((task, index) => {
+            const deadlineDisplay = this.formatTaskDeadlineShort(task);
+            const status = task.completed ? 'completed' : 'not_started';
+            const statusInfo = statusLabels[status];
+            
+            html += `
+                <div class="task-table-row ${task.completed ? 'completed' : ''}" 
+                     data-task-id="${task.id}" 
+                     data-index="${index}"
+                     draggable="true"
+                     ondragstart="ProjectsUI.handleTaskDragStart(event, '${project.id}', ${index})"
+                     ondragover="ProjectsUI.handleTaskDragOver(event)"
+                     ondragleave="ProjectsUI.handleTaskDragLeave(event)"
+                     ondrop="ProjectsUI.handleTaskDrop(event, '${project.id}', ${index})"
+                     ondragend="ProjectsUI.handleTaskDragEnd(event)">
+                    <div class="task-col task-col-name">
+                        <span class="drag-handle" title="ドラッグで並び替え">⠿</span>
+                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
+                             onclick="ProjectsUI.toggleTask('${project.id}', '${task.id}')">
+                            ${task.completed ? '✓' : ''}
+                        </div>
+                        <span class="task-title ${task.completed ? 'completed' : ''}">${this.escapeHTML(task.title)}</span>
+                    </div>
+                    <div class="task-col task-col-status">
+                        <span class="status-badge" style="background: ${statusInfo.color}20; color: ${statusInfo.color};">
+                            ${statusInfo.label}
+                        </span>
+                    </div>
+                    <div class="task-col task-col-deadline">
+                        ${deadlineDisplay || '-'}
+                    </div>
+                    <div class="task-col task-col-priority">
+                        <span class="priority-badge" style="background: ${priorityColors[task.priority]}20; color: ${priorityColors[task.priority]};">
+                            ${priorityLabels[task.priority] || '中'}
+                        </span>
+                    </div>
+                    <div class="task-col task-col-actions">
+                        <button class="btn-icon-sm" onclick="ProjectsUI.openTaskEditor('${project.id}', '${task.id}')" title="編集">✏️</button>
+                        <button class="btn-icon-sm" onclick="ProjectsUI.deleteTask('${project.id}', '${task.id}')" title="削除">🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        // 完了数表示
+        const completedCount = project.tasks.filter(t => t.completed).length;
+        html += `
+            <div class="task-table-footer">
+                <span class="complete-label">COMPLETE</span>
+                <span class="complete-count">${completedCount}/${project.tasks.length}</span>
+            </div>
+        `;
+
+        container.innerHTML = html;
+    },
+
+    // ドラッグ＆ドロップ用の状態
+    _draggedTaskIndex: null,
+    _draggedProjectId: null,
+
+    handleTaskDragStart(event, projectId, index) {
+        this._draggedTaskIndex = index;
+        this._draggedProjectId = projectId;
+        event.target.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'move';
+    },
+
+    handleTaskDragOver(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        const row = event.target.closest('.task-table-row');
+        if (row) {
+            row.classList.add('drag-over');
+        }
+    },
+
+    handleTaskDragLeave(event) {
+        const row = event.target.closest('.task-table-row');
+        if (row) {
+            row.classList.remove('drag-over');
+        }
+    },
+
+    handleTaskDrop(event, projectId, targetIndex) {
+        event.preventDefault();
+        const row = event.target.closest('.task-table-row');
+        if (row) {
+            row.classList.remove('drag-over');
+        }
+
+        if (this._draggedProjectId !== projectId || this._draggedTaskIndex === null) return;
+        if (this._draggedTaskIndex === targetIndex) return;
+
+        // タスクの順序を変更
+        const project = ProjectsManager.getProject(projectId);
+        if (project) {
+            const [removed] = project.tasks.splice(this._draggedTaskIndex, 1);
+            project.tasks.splice(targetIndex, 0, removed);
+            ProjectsManager.saveToStorage();
+            this.renderDetailTasks(project);
+            this.renderAll();
+        }
+    },
+
+    handleTaskDragEnd(event) {
+        event.target.classList.remove('dragging');
+        document.querySelectorAll('.task-table-row.drag-over').forEach(el => {
+            el.classList.remove('drag-over');
+        });
+        this._draggedTaskIndex = null;
+        this._draggedProjectId = null;
+    },
+
+    formatTaskDeadlineShort(task) {
+        if (!task.deadline) return '';
+        
+        if (task.deadlineType === 'text') {
+            return task.deadline;
+        } else if (task.deadlineType === 'month') {
+            const [year, month] = task.deadline.split('-');
+            return `${year}/${month}`;
+        } else {
+            return task.deadline;
+        }
+    },
+
+    formatTaskDeadline(task) {
+        if (!task.deadline) return '';
+        
+        if (task.deadlineType === 'text') {
+            return `📅 ${task.deadline}`;
+        } else if (task.deadlineType === 'month') {
+            const [year, month] = task.deadline.split('-');
+            return `📅 ${year}年${parseInt(month)}月中`;
+        } else {
+            // date type
+            const date = new Date(task.deadline);
+            return `📅 ${date.getMonth() + 1}/${date.getDate()}`;
+        }
     },
 
     toggleTask(projectId, taskId) {
@@ -606,6 +870,120 @@ const ProjectsUI = {
         document.getElementById('detail-progress-text').textContent = `${progress}%`;
 
         this.renderAll();
+        
+        // ダッシュボード連携：更新をトリガー
+        if (typeof renderAllTasks === 'function') {
+            renderAllTasks();
+        }
+    },
+
+    deleteTask(projectId, taskId) {
+        if (!confirm('このタスクを削除しますか？')) return;
+        
+        ProjectsManager.deleteTaskFromProject(projectId, taskId);
+        const project = ProjectsManager.getProject(projectId);
+        this.renderDetailTasks(project);
+        document.getElementById('detail-task-count').textContent = `${project.tasks.length}件`;
+        
+        const progress = ProjectsManager.getProjectProgress(projectId);
+        document.getElementById('detail-progress-bar').style.width = `${progress}%`;
+        document.getElementById('detail-progress-text').textContent = `${progress}%`;
+        
+        this.renderAll();
+    },
+
+    // タスク編集モーダル
+    currentEditingTaskId: null,
+
+    openTaskEditor(projectId, taskId = null) {
+        const project = ProjectsManager.getProject(projectId);
+        if (!project) return;
+
+        // カード表示からの編集の場合もプロジェクトIDを設定
+        this.currentProjectId = projectId;
+        this.currentEditingTaskId = taskId;
+        const modal = document.getElementById('task-edit-modal');
+        const form = document.getElementById('task-edit-form');
+        
+        if (taskId) {
+            // 編集モード
+            const task = project.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            document.getElementById('task-edit-title').value = task.title;
+            document.getElementById('task-edit-priority').value = task.priority || 'medium';
+            document.getElementById('task-edit-deadline-type').value = task.deadlineType || 'none';
+            this.updateDeadlineInput(task.deadlineType || 'none', task.deadline);
+            document.getElementById('task-edit-modal-title').textContent = '✏️ タスクを編集';
+        } else {
+            // 新規作成モード
+            form.reset();
+            document.getElementById('task-edit-deadline-type').value = 'none';
+            this.updateDeadlineInput('none', '');
+            document.getElementById('task-edit-modal-title').textContent = '➕ 新規タスク';
+        }
+
+        modal.classList.add('active');
+    },
+
+    closeTaskEditor() {
+        document.getElementById('task-edit-modal').classList.remove('active');
+        this.currentEditingTaskId = null;
+    },
+
+    updateDeadlineInput(type, value = '') {
+        const container = document.getElementById('deadline-input-container');
+        
+        switch (type) {
+            case 'date':
+                container.innerHTML = `<input type="date" id="task-edit-deadline" class="form-control" value="${value || ''}">`;
+                break;
+            case 'month':
+                container.innerHTML = `<input type="month" id="task-edit-deadline" class="form-control" value="${value || ''}">`;
+                break;
+            case 'text':
+                container.innerHTML = `<input type="text" id="task-edit-deadline" class="form-control" placeholder="例: 1月中, 来週まで" value="${value || ''}">`;
+                break;
+            default:
+                container.innerHTML = `<span style="color: var(--text-muted);">期限なし</span>`;
+        }
+    },
+
+    saveTaskEdit() {
+        if (!this.currentProjectId) return;
+
+        const title = document.getElementById('task-edit-title').value.trim();
+        if (!title) {
+            alert('タイトルを入力してください');
+            return;
+        }
+
+        const priority = document.getElementById('task-edit-priority').value;
+        const deadlineType = document.getElementById('task-edit-deadline-type').value;
+        const deadlineInput = document.getElementById('task-edit-deadline');
+        const deadline = deadlineInput ? deadlineInput.value : null;
+
+        const taskData = {
+            title,
+            priority,
+            deadlineType,
+            deadline: deadlineType !== 'none' ? deadline : null
+        };
+
+        if (this.currentEditingTaskId) {
+            // 更新
+            ProjectsManager.updateTaskInProject(this.currentProjectId, this.currentEditingTaskId, taskData);
+        } else {
+            // 新規作成
+            ProjectsManager.addTaskToProject(this.currentProjectId, taskData);
+        }
+
+        const project = ProjectsManager.getProject(this.currentProjectId);
+        this.renderDetailTasks(project);
+        document.getElementById('detail-task-count').textContent = `${project.tasks.length}件`;
+        
+        this.closeTaskEditor();
+        this.renderAll();
     },
 
     addTaskToProject() {
@@ -615,7 +993,8 @@ const ProjectsUI = {
         const title = input.value.trim();
 
         if (title) {
-            ProjectsManager.addTaskToProject(this.currentProjectId, title);
+            // 簡易追加（詳細設定なし）
+            ProjectsManager.addTaskToProject(this.currentProjectId, { title });
             const project = ProjectsManager.getProject(this.currentProjectId);
             this.renderDetailTasks(project);
             document.getElementById('detail-task-count').textContent = `${project.tasks.length}件`;
@@ -674,6 +1053,6 @@ const ProjectsUI = {
 };
 
 // Initialize on DOM load
-document.addEventListener('DOMContentLoaded', () => {
-    ProjectsUI.init();
+document.addEventListener('DOMContentLoaded', async () => {
+    await ProjectsUI.init();
 });

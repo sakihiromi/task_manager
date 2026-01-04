@@ -63,9 +63,9 @@
 
             <div class="user-card">
                 <div class="user-info">
-                    <div class="user-avatar">S</div>
+                    <div class="user-avatar" id="user-avatar">U</div>
                     <div class="user-details">
-                        <div class="user-name">Saki</div>
+                        <div class="user-name" id="user-name" onclick="editUserName()" title="クリックして名前を変更">User</div>
                         <div class="user-level">🌟 Life Planner</div>
                     </div>
                 </div>
@@ -109,11 +109,29 @@
                         
                         <div class="goal-category">
                             <div class="goal-category-header">
-                                <span class="goal-icon">🎓</span>
+                                <span class="goal-icon">🔬</span>
+                                <span class="goal-title">研究</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-research"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('research')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">📚</span>
                                 <span class="goal-title">学習・成長</span>
                             </div>
                             <div class="goal-items" id="year-goals-study"></div>
                             <button class="add-goal-btn" onclick="PlannerUI.addGoal('study')">+ 目標を追加</button>
+                        </div>
+                        
+                        <div class="goal-category">
+                            <div class="goal-category-header">
+                                <span class="goal-icon">🏠</span>
+                                <span class="goal-title">プライベート</span>
+                            </div>
+                            <div class="goal-items" id="year-goals-private"></div>
+                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('private')">+ 目標を追加</button>
                         </div>
                         
                         <div class="goal-category">
@@ -123,24 +141,6 @@
                             </div>
                             <div class="goal-items" id="year-goals-health"></div>
                             <button class="add-goal-btn" onclick="PlannerUI.addGoal('health')">+ 目標を追加</button>
-                        </div>
-                        
-                        <div class="goal-category">
-                            <div class="goal-category-header">
-                                <span class="goal-icon">💰</span>
-                                <span class="goal-title">お金・資産</span>
-                            </div>
-                            <div class="goal-items" id="year-goals-money"></div>
-                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('money')">+ 目標を追加</button>
-                        </div>
-                        
-                        <div class="goal-category">
-                            <div class="goal-category-header">
-                                <span class="goal-icon">❤️</span>
-                                <span class="goal-title">人間関係</span>
-                            </div>
-                            <div class="goal-items" id="year-goals-relationship"></div>
-                            <button class="add-goal-btn" onclick="PlannerUI.addGoal('relationship')">+ 目標を追加</button>
                         </div>
                         
                         <div class="goal-category">
@@ -179,26 +179,50 @@
                     <h3>✔️ 今月やること</h3>
                     <div class="month-todo-list" id="month-todos"></div>
                     <div class="add-todo-row">
+                        <select id="new-month-todo-label" class="form-control todo-label-select">
+                            <option value="">ラベルなし</option>
+                            <option value="work">💼 仕事</option>
+                            <option value="research">🔬 研究</option>
+                            <option value="study">📚 学習</option>
+                            <option value="private">🏠 プライベート</option>
+                        </select>
                         <input type="text" id="new-month-todo" class="form-control" placeholder="今月やることを追加...">
                         <button class="btn btn-primary" onclick="PlannerUI.addMonthTodo()">追加</button>
                     </div>
                 </div>
 
                 <div class="month-categories">
-                    <div class="month-category">
-                        <h4>🤝 仕事</h4>
+                    <div class="month-category collapsible" id="category-work">
+                        <div class="category-header" onclick="PlannerUI.toggleCategoryCollapse('work')">
+                            <h4>💼 仕事</h4>
+                            <span class="category-count" id="count-work">0</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
                         <div class="category-items" id="month-work-items"></div>
-                        <button class="add-item-btn" onclick="PlannerUI.addMonthItem('work')">+ 追加</button>
                     </div>
-                    <div class="month-category">
-                        <h4>🎓 学校・学習</h4>
+                    <div class="month-category collapsible" id="category-research">
+                        <div class="category-header" onclick="PlannerUI.toggleCategoryCollapse('research')">
+                            <h4>🔬 研究</h4>
+                            <span class="category-count" id="count-research">0</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div class="category-items" id="month-research-items"></div>
+                    </div>
+                    <div class="month-category collapsible" id="category-study">
+                        <div class="category-header" onclick="PlannerUI.toggleCategoryCollapse('study')">
+                            <h4>📚 学習</h4>
+                            <span class="category-count" id="count-study">0</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
                         <div class="category-items" id="month-study-items"></div>
-                        <button class="add-item-btn" onclick="PlannerUI.addMonthItem('study')">+ 追加</button>
                     </div>
-                    <div class="month-category">
-                        <h4>🏋️ ライフスタイル</h4>
-                        <div class="category-items" id="month-lifestyle-items"></div>
-                        <button class="add-item-btn" onclick="PlannerUI.addMonthItem('lifestyle')">+ 追加</button>
+                    <div class="month-category collapsible" id="category-private">
+                        <div class="category-header" onclick="PlannerUI.toggleCategoryCollapse('private')">
+                            <h4>🏠 プライベート</h4>
+                            <span class="category-count" id="count-private">0</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div class="category-items" id="month-private-items"></div>
                     </div>
                 </div>
 
@@ -262,6 +286,54 @@
                         </button>
                         <div style="display: flex; gap: 12px; margin-left: auto;">
                             <button type="button" class="btn btn-secondary" onclick="PlannerUI.closeGoalModal()">キャンセル</button>
+                            <button type="submit" class="btn btn-primary">💾 保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Edit Modal for Planner -->
+    <div class="modal-overlay" id="planner-task-modal">
+        <div class="modal-container" style="width: 500px;">
+            <div class="modal-header">
+                <h3 id="planner-task-modal-title">✏️ タスクを編集</h3>
+                <button class="btn-icon" onclick="PlannerUI.closeTaskModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="planner-task-form" onsubmit="event.preventDefault(); PlannerUI.saveTaskEdit();">
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">タスク名</label>
+                        <input type="text" id="planner-task-title" class="form-control" required
+                            placeholder="タスク名を入力...">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">優先度</label>
+                        <select id="planner-task-priority" class="form-control">
+                            <option value="low">低</option>
+                            <option value="medium" selected>中</option>
+                            <option value="high">高</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">期限の種類</label>
+                        <select id="planner-task-deadline-type" class="form-control" onchange="PlannerUI.updateTaskDeadlineInput(this.value)">
+                            <option value="none">なし</option>
+                            <option value="month">月指定（〇月中）</option>
+                            <option value="date">日付指定</option>
+                            <option value="text">テキスト</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 20px;" id="planner-deadline-input-container">
+                        <span style="color: var(--text-muted);">期限なし</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <button type="button" class="btn btn-danger" id="btn-delete-task" onclick="PlannerUI.deleteTaskFromModal()">
+                            🗑️ 削除
+                        </button>
+                        <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" onclick="PlannerUI.closeTaskModal()">キャンセル</button>
                             <button type="submit" class="btn btn-primary">💾 保存</button>
                         </div>
                     </div>

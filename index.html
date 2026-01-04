@@ -61,9 +61,9 @@
                     <span class="icon">🔬</span>
                     <span>研究</span>
                 </div>
-                <div class="nav-item" onclick="scrollToCategory('certification')">
+                <div class="nav-item" onclick="scrollToCategory('study')">
                     <span class="icon">📚</span>
-                    <span>資格試験</span>
+                    <span>学習</span>
                 </div>
                 <div class="nav-item" onclick="scrollToCategory('private')">
                     <span class="icon">🏠</span>
@@ -83,9 +83,9 @@
 
             <div class="user-card">
                 <div class="user-info">
-                    <div class="user-avatar">S</div>
+                    <div class="user-avatar" id="user-avatar">U</div>
                     <div class="user-details">
-                        <div class="user-name">Saki</div>
+                        <div class="user-name" id="user-name" onclick="editUserName()" title="クリックして名前を変更">User</div>
                         <div class="user-level">🔥 Productivity Master</div>
                     </div>
                 </div>
@@ -235,14 +235,14 @@
 
                 <!-- Work Tasks -->
                 <div class="card" id="category-work">
-                        <div class="card-header">
+                    <div class="card-header">
                         <div class="card-title">
                             <span class="icon">💼</span>
                             仕事
                         </div>
-                        <button class="btn btn-primary" onclick="openModal('work')" style="padding: 8px 16px; font-size: 0.85rem;">
-                            + 追加
-                        </button>
+                        <a href="projects.html?filter=work" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; text-decoration: none;">
+                            📂 プロジェクトで管理
+                        </a>
                     </div>
                     <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
                         <div id="work-tasks" class="task-list-pro"></div>
@@ -256,28 +256,28 @@
                             <span class="icon">🔬</span>
                             研究
                         </div>
-                        <button class="btn btn-primary" onclick="openModal('research')" style="padding: 8px 16px; font-size: 0.85rem;">
-                            + 追加
-                        </button>
+                        <a href="projects.html?filter=research" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; text-decoration: none;">
+                            📂 プロジェクトで管理
+                        </a>
                     </div>
                     <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
                         <div id="research-tasks" class="task-list-pro"></div>
-                            </div>
-                        </div>
+                    </div>
+                </div>
 
-                <!-- Certification Tasks -->
-                <div class="card" id="category-certification">
+                <!-- Study Tasks -->
+                <div class="card" id="category-study">
                     <div class="card-header">
                         <div class="card-title">
                             <span class="icon">📚</span>
-                            資格試験
+                            学習
                         </div>
-                        <button class="btn btn-primary" onclick="openModal('certification')" style="padding: 8px 16px; font-size: 0.85rem;">
-                            + 追加
-                        </button>
+                        <a href="projects.html?filter=study" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; text-decoration: none;">
+                            📂 プロジェクトで管理
+                        </a>
                     </div>
                     <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
-                        <div id="certification-tasks" class="task-list-pro"></div>
+                        <div id="study-tasks" class="task-list-pro"></div>
                     </div>
                 </div>
 
@@ -288,9 +288,9 @@
                             <span class="icon">🏠</span>
                             プライベート
                         </div>
-                        <button class="btn btn-primary" onclick="openModal('private')" style="padding: 8px 16px; font-size: 0.85rem;">
-                            + 追加
-                        </button>
+                        <a href="projects.html?filter=private" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; text-decoration: none;">
+                            📂 プロジェクトで管理
+                        </a>
                     </div>
                     <div class="card-body" style="padding: 0; max-height: 500px; overflow-y: auto;">
                         <div id="private-tasks" class="task-list-pro"></div>
@@ -371,7 +371,7 @@
                             <select id="task-category" class="form-control">
                                 <option value="work">💼 仕事</option>
                                 <option value="research">🔬 研究</option>
-                                <option value="certification">📚 資格試験</option>
+                                <option value="study">📚 学習</option>
                                 <option value="private">🏠 プライベート</option>
                             </select>
                         </div>

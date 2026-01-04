@@ -347,6 +347,61 @@
     background: var(--bg-card-hover);
 }
 
+/* Drag Handle */
+.drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    font-size: 1rem;
+    padding: 4px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    user-select: none;
+}
+
+.drag-handle:hover {
+    opacity: 1;
+    color: var(--accent-primary);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.drag-handle-small {
+    cursor: grab;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+    user-select: none;
+}
+
+.day-task:hover .drag-handle-small,
+.task-row:hover .drag-handle-small {
+    opacity: 1;
+}
+
+.drag-handle-small:active {
+    cursor: grabbing;
+}
+
+/* Dragging States */
+.draggable-item {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.draggable-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.98);
+}
+
+.draggable-item.drag-over {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    transform: translateY(2px);
+}
+
 .todo-checkbox, .item-checkbox {
     width: 18px;
     height: 18px;
@@ -399,6 +454,49 @@
     flex: 1;
 }
 
+/* Todo Label Select */
+.todo-label-select {
+    width: 140px;
+    flex-shrink: 0;
+}
+
+/* Todo Label Badge */
+.todo-label-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Label Change Dropdown (inline) */
+.todo-label-change {
+    width: 32px;
+    height: 32px;
+    padding: 4px;
+    font-size: 0.8rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.todo-item:hover .todo-label-change {
+    opacity: 1;
+    border-color: var(--border-subtle);
+}
+
+.todo-label-change:focus {
+    opacity: 1;
+    border-color: var(--accent-primary);
+    width: 120px;
+}
+
 /* Month Categories */
 .month-categories {
     display: grid;
@@ -412,6 +510,58 @@
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.month-category.collapsible .category-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    user-select: none;
+}
+
+.month-category.collapsible .category-header h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+    flex: 1;
+}
+
+.month-category.collapsible .category-header:hover {
+    color: var(--accent-primary);
+}
+
+.category-count {
+    font-size: 0.75rem;
+    background: var(--bg-input);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 8px;
+}
+
+.collapse-icon {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.month-category.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.month-category.collapsed .category-items {
+    display: none;
+}
+
+.month-category.collapsed .category-header {
+    margin-bottom: 0;
+    border-bottom: none;
 }
 
 .month-category h4 {
@@ -426,8 +576,14 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 12px;
     min-height: 40px;
+}
+
+.empty-category {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 12px;
 }
 
 .add-item-btn {
@@ -545,10 +701,20 @@
     background: var(--bg-card);
     border-radius: var(--radius-md);
     transition: all 0.2s;
+    border: 1px solid transparent;
 }
 
 .week-todo-item:hover {
     background: var(--bg-card-hover);
+}
+
+.week-todo-item.dragging {
+    opacity: 0.4;
+}
+
+.week-todo-item.drag-over {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent-primary);
 }
 
 .week-todo-checkbox {
@@ -650,12 +816,24 @@
     align-items: flex-start;
     gap: 6px;
     font-size: 0.8rem;
-    padding: 4px 0;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
 }
 
 .day-task.completed {
     text-decoration: line-through;
     color: var(--text-muted);
+}
+
+.day-task.dragging {
+    opacity: 0.4;
+}
+
+.day-task.drag-over {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent-primary);
 }
 
 .task-check {
@@ -669,6 +847,7 @@
 
 .task-text {
     color: var(--text-primary);
+    flex: 1;
 }
 
 .day-task.completed .task-text {
@@ -825,6 +1004,7 @@
     background: var(--bg-input);
     border-radius: var(--radius-sm);
     transition: all 0.2s;
+    border: 1px solid transparent;
 }
 
 .task-row:hover {
@@ -833,6 +1013,21 @@
 
 .task-row.completed {
     opacity: 0.6;
+}
+
+.task-row.dragging {
+    opacity: 0.4;
+}
+
+.task-row.drag-over {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent-primary);
+}
+
+.planner-tasks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .task-checkbox {
@@ -865,15 +1060,33 @@
     color: var(--text-muted);
 }
 
-.mini-delete {
+.mini-delete,
+.btn-icon-delete {
     opacity: 0;
     width: 20px !important;
     height: 20px !important;
+    min-width: 20px;
     font-size: 0.8rem !important;
     color: var(--accent-danger) !important;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: opacity 0.2s, background 0.2s;
 }
 
-.task-row:hover .mini-delete {
+.mini-delete:hover,
+.btn-icon-delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.task-row:hover .mini-delete,
+.day-task:hover .btn-icon-delete,
+.week-todo-item:hover .delete-btn {
     opacity: 1;
 }
 
@@ -1050,4 +1263,225 @@
     .week-summary {
         grid-template-columns: 1fr;
     }
+}
+
+/* Project tasks in categories */
+.category-item.project-task {
+    background: rgba(139, 92, 246, 0.08);
+    border-left: 3px solid #8b5cf6;
+    padding-left: 10px;
+}
+
+.category-item .project-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+}
+
+.category-item .deadline-badge {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+/* Project Todos Section in Month View */
+.project-todos-section {
+    margin-bottom: 20px;
+}
+
+.project-todos-header,
+.manual-todos-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 12px;
+}
+
+.project-todo-group {
+    background: rgba(139, 92, 246, 0.05);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.project-todo-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(139, 92, 246, 0.1);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.project-todo-header:hover {
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.project-todo-header .project-toggle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    width: 16px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.project-todo-group.collapsed .project-todo-header {
+    border-bottom: none;
+}
+
+.project-todo-group.collapsed .project-todo-tasks {
+    display: none;
+}
+
+.project-todo-header .project-icon {
+    font-size: 1.1rem;
+}
+
+.project-todo-header .project-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.project-todo-header .btn-add-task {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-left: 8px;
+}
+
+.project-todo-header .btn-add-task:hover {
+    background: rgba(139, 92, 246, 0.5);
+    transform: scale(1.1);
+}
+
+.project-todo-header .project-progress {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 8px;
+}
+
+.quick-add-task-form {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.quick-add-task-form input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+
+.quick-add-task-form .btn {
+    flex-shrink: 0;
+}
+
+.quick-add-task-form .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.project-todo-tasks {
+    padding: 8px;
+}
+
+.project-todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.project-todo-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.project-todo-item.completed {
+    opacity: 0.6;
+}
+
+.project-todo-item.completed .todo-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.project-todo-item .todo-text {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.project-todo-item .priority-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.project-todo-item .deadline-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.project-todo-item .task-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.project-todo-item:hover .task-actions {
+    opacity: 1;
+}
+
+.project-todo-item .task-actions .btn-icon-sm {
+    padding: 4px 6px;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.project-todo-item .task-actions .btn-icon-sm:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.manual-todos-section {
+    margin-top: 16px;
+}
+
+/* Planner Task Edit Modal */
+#planner-task-modal .modal-container {
+    max-height: 90vh;
+    overflow-y: auto;
 }

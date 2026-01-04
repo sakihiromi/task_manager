@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 venv_task/
+data/
 venv/
 __pycache__/
 *.pyc
@@ -30,3 +31,4 @@ npm-debug.log*
 tmp/
 temp/
 *.tmp
+model/

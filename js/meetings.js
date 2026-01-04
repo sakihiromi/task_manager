@@ -5,9 +5,76 @@
 const MeetingsManager = {
     STORAGE_KEY: 'meetings_data_v1',
     meetings: [],
+    _saveDebounceTimer: null,
 
-    init() {
+    async init() {
+        // サーバーから読み込みを試みる
+        const serverLoaded = await this.loadFromServer();
+        
+        if (!serverLoaded) {
+            console.log('📦 会議データ: サーバー接続失敗 - ローカルストレージを使用');
         this.loadFromStorage();
+        }
+    },
+
+    async loadFromServer() {
+        try {
+            const response = await fetch('/api/data/meetings');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                this.meetings = data;
+                console.log(`✅ サーバーから会議を読み込み: ${this.meetings.length}件`);
+            } else {
+                // サーバーにデータがない場合、ローカルから移行
+                this.loadFromStorage();
+                if (this.meetings.length > 0) {
+                    console.log(`📤 ローカルの会議をサーバーに移行: ${this.meetings.length}件`);
+                    this.saveToServer();
+                }
+            }
+            return true;
+        } catch (error) {
+            console.warn('⚠️ 会議のサーバー読み込みに失敗:', error.message);
+            return false;
+        }
+    },
+
+    saveToServer() {
+        if (this._saveDebounceTimer) {
+            clearTimeout(this._saveDebounceTimer);
+        }
+        
+        this._saveDebounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch('/api/data/meetings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.meetings)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                console.log('💾 会議をサーバーに保存しました');
+            } catch (error) {
+                console.warn('⚠️ 会議のサーバー保存に失敗:', error.message);
+            }
+        }, 300);
+        
+        // ローカルにも即座に保存（バックアップ）
+        this._saveToLocalStorage();
+    },
+
+    _saveToLocalStorage() {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.meetings));
+        } catch (error) {
+            console.error('会議のローカル保存に失敗:', error);
+        }
     },
 
     loadFromStorage() {
@@ -25,11 +92,8 @@ const MeetingsManager = {
     },
 
     saveToStorage() {
-        try {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.meetings));
-        } catch (error) {
-            console.error('会議データの保存に失敗:', error);
-        }
+        this._saveToLocalStorage();
+        this.saveToServer();
     },
 
     generateId() {
@@ -224,8 +288,8 @@ const MeetingsUI = {
     mediaRecorder: null,
     audioChunks: [],
 
-    init() {
-        MeetingsManager.init();
+    async init() {
+        await MeetingsManager.init();
         TeamsIntegration.init();
         this.renderMeetings();
         this.updateCounts();
@@ -857,6 +921,6 @@ const MeetingsUI = {
 };
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    MeetingsUI.init();
+document.addEventListener('DOMContentLoaded', async () => {
+    await MeetingsUI.init();
 });

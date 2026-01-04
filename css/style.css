@@ -280,6 +280,15 @@ body {
 .user-details .user-name {
     font-weight: 600;
     font-size: 0.95rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.user-details .user-name:hover {
+    background: rgba(139, 92, 246, 0.2);
 }
 
 .user-details .user-level {
@@ -675,7 +684,9 @@ body.focus-mode .card:not(.focus-visible) {
     border-left: 3px solid var(--accent-danger);
 }
 
-.task-item-pro.hidden {
+.task-item-pro.hidden,
+.task-item.project-source.hidden,
+.project-group.hidden {
     display: none !important;
 }
 
@@ -1649,4 +1660,41 @@ textarea.form-control {
 .memo-project-group.uncategorized .project-name {
     font-weight: 500;
     font-size: 0.85rem;
+}
+
+/* Project Source Tasks */
+.task-item.project-source {
+    border-left: 3px solid var(--accent-secondary);
+}
+
+.task-source-badge {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Status badge inline */
+.status-badge-inline {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-badge-inline.status-completed {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.status-badge-inline.status-pending {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}
+
+.status-badge-inline.status-in-progress {
+    background: rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
 }

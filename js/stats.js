@@ -7,7 +7,12 @@ const StatsManager = {
 
     // メインの更新メソッド
     updateStatsUI() {
-        const allTasks = TaskManager.getAllTasks();
+        const tmTasks = TaskManager.getAllTasks();
+        const projectTasks = this.getProjectTasks();
+        const plannerTasks = this.getPlannerTasks();
+        
+        // 統合したタスク
+        const allTasks = [...tmTasks, ...projectTasks, ...plannerTasks];
         const completedTasks = allTasks.filter(t => t.completed);
 
         // 基本統計
@@ -19,6 +24,116 @@ const StatsManager = {
         
         // プロジェクト統計
         this.updateProjectStats();
+    },
+
+    // プロジェクトからタスクを取得
+    getProjectTasks() {
+        if (typeof ProjectsManager === 'undefined') return [];
+        
+        const tasks = [];
+        ProjectsManager.projects.forEach(project => {
+            project.tasks.forEach(task => {
+                tasks.push({
+                    ...task,
+                    category: project.category,
+                    projectId: project.id,
+                    projectName: project.name,
+                    source: 'project'
+                });
+            });
+        });
+        return tasks;
+    },
+
+    // プランナーからタスクを取得
+    getPlannerTasks() {
+        // PlannerUIが読み込まれている場合はそちらを使用
+        if (typeof PlannerUI !== 'undefined' && PlannerUI.data) {
+            return this._extractPlannerTasks(PlannerUI.data);
+        }
+        
+        // CalendarManagerのキャッシュがあればそれを使用
+        if (typeof CalendarManager !== 'undefined' && CalendarManager._plannerDataCache) {
+            return this._extractPlannerTasks(CalendarManager._plannerDataCache);
+        }
+        
+        // ローカルストレージから読み込む
+        const stored = localStorage.getItem('planner_data_v1');
+        if (!stored) return [];
+        
+        try {
+            const plannerData = JSON.parse(stored);
+            return this._extractPlannerTasks(plannerData);
+        } catch (e) {
+            console.warn('プランナーデータの読み込みに失敗:', e);
+            return [];
+        }
+    },
+    
+    _extractPlannerTasks(plannerData) {
+        const tasks = [];
+        const dailyTasks = plannerData.dailyTasks || {};
+        
+        // 日ごとのタスク
+        Object.entries(dailyTasks).forEach(([dateStr, dayTasks]) => {
+            dayTasks.forEach((task, idx) => {
+                tasks.push({
+                    id: `planner_daily_${dateStr}_${idx}`,
+                    title: task.text,
+                    deadline: dateStr,
+                    completed: task.completed,
+                    completedAt: task.completed ? (task.completedAt || dateStr + 'T12:00:00.000Z') : null,
+                    source: 'planner',
+                    plannerType: 'daily'
+                });
+            });
+        });
+        
+        // 週のTODO
+        const weekPlans = plannerData.weekPlans || {};
+        Object.entries(weekPlans).forEach(([weekKey, plan]) => {
+            if (plan.todos) {
+                plan.todos.forEach((task, idx) => {
+                    // 週の開始日を期限として使用
+                    const match = weekKey.match(/week-(\d{4})-(\d{2})-(\d{2})/);
+                    if (match) {
+                        const dateStr = `${match[1]}-${match[2]}-${match[3]}`;
+                        tasks.push({
+                            id: `planner_week_${weekKey}_${idx}`,
+                            title: task.text,
+                            deadline: dateStr,
+                            completed: task.completed,
+                            completedAt: task.completed ? (task.completedAt || dateStr + 'T12:00:00.000Z') : null,
+                            source: 'planner',
+                            plannerType: 'week'
+                        });
+                    }
+                });
+            }
+        });
+        
+        // 月のTODO
+        const monthPlans = plannerData.monthPlans || {};
+        Object.entries(monthPlans).forEach(([monthKey, plan]) => {
+            if (plan.todos) {
+                plan.todos.forEach((task, idx) => {
+                    // completedAtがあればそれを使用、なければ月の初日を使用
+                    const monthDate = monthKey + '-01';
+                    tasks.push({
+                        id: `planner_month_${monthKey}_${idx}`,
+                        title: task.text,
+                        deadline: monthDate,
+                        completed: task.completed,
+                        completedAt: task.completed ? (task.completedAt || null) : null,
+                        source: 'planner',
+                        plannerType: 'month',
+                        label: task.label
+                    });
+                });
+            }
+        });
+        
+        return tasks;
     },
     
     updateProjectStats() {
@@ -133,7 +248,7 @@ const StatsManager = {
         const counts = {
             work: 0,
             research: 0,
-            certification: 0,
+            study: 0,
             private: 0
         };
 
@@ -143,8 +258,8 @@ const StatsManager = {
             }
         });
 
-        const data = [counts.work, counts.research, counts.certification, counts.private];
-        const labels = ['仕事', '研究', '資格試験', 'プライベート'];
+        const data = [counts.work, counts.research, counts.study, counts.private];
+        const labels = ['仕事', '研究', '学習', 'プライベート'];
         const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'];
 
         if (this.charts.category) {

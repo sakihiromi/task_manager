@@ -62,10 +62,10 @@
                     <span>研究</span>
                     <span class="filter-count" id="count-research">0</span>
                 </div>
-                <div class="nav-item filter-item" data-filter="certification" onclick="ProjectsUI.setFilter('certification')">
+                <div class="nav-item filter-item" data-filter="study" onclick="ProjectsUI.setFilter('study')">
                     <span class="icon">📚</span>
-                    <span>資格試験</span>
-                    <span class="filter-count" id="count-certification">0</span>
+                    <span>学習</span>
+                    <span class="filter-count" id="count-study">0</span>
                 </div>
                 <div class="nav-item filter-item" data-filter="private" onclick="ProjectsUI.setFilter('private')">
                     <span class="icon">🏠</span>
@@ -92,9 +92,9 @@
 
             <div class="user-card">
                 <div class="user-info">
-                    <div class="user-avatar">S</div>
+                    <div class="user-avatar" id="user-avatar">U</div>
                     <div class="user-details">
-                        <div class="user-name">Saki</div>
+                        <div class="user-name" id="user-name" onclick="editUserName()" title="クリックして名前を変更">User</div>
                         <div class="user-level">🎯 Project Manager</div>
                     </div>
                 </div>
@@ -264,6 +264,7 @@
                         <div class="add-task-form">
                             <input type="text" id="new-project-task" class="form-control" placeholder="新しいタスクを追加...">
                             <button class="btn btn-primary" onclick="ProjectsUI.addTaskToProject()">追加</button>
+                            <button class="btn btn-secondary" onclick="ProjectsUI.openTaskEditor(ProjectsUI.currentProjectId)" title="詳細設定付きで追加">➕ 詳細</button>
                         </div>
                     </div>
                 </div>
@@ -310,7 +311,7 @@
                             <select id="project-category" class="form-control">
                                 <option value="work">💼 仕事</option>
                                 <option value="research">🔬 研究</option>
-                                <option value="certification">📚 資格試験</option>
+                                <option value="study">📚 学習</option>
                                 <option value="private">🏠 プライベート</option>
                             </select>
                         </div>
@@ -339,6 +340,58 @@
 
                     <div style="display: flex; justify-content: flex-end; gap: 12px;">
                         <button type="button" class="btn btn-secondary" onclick="ProjectsUI.closeProjectModal()">キャンセル</button>
+                        <button type="submit" class="btn btn-primary">💾 保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Edit Modal -->
+    <div class="modal-overlay" id="task-edit-modal">
+        <div class="modal-container" style="width: 500px;">
+            <div class="modal-header">
+                <h3 id="task-edit-modal-title">➕ 新規タスク</h3>
+                <button class="btn-icon" onclick="ProjectsUI.closeTaskEditor()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="task-edit-form" onsubmit="event.preventDefault(); ProjectsUI.saveTaskEdit();">
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label">タスク名</label>
+                        <input type="text" id="task-edit-title" class="form-control" required
+                            placeholder="タスクの内容...">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label class="form-label">優先度</label>
+                            <select id="task-edit-priority" class="form-control">
+                                <option value="high">🔴 高</option>
+                                <option value="medium" selected>🟡 中</option>
+                                <option value="low">🟢 低</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">期限タイプ</label>
+                            <select id="task-edit-deadline-type" class="form-control" 
+                                onchange="ProjectsUI.updateDeadlineInput(this.value)">
+                                <option value="none">期限なし</option>
+                                <option value="date">日付指定</option>
+                                <option value="month">月指定（〇月中）</option>
+                                <option value="text">テキスト（ざっくり）</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 24px;">
+                        <label class="form-label">期限</label>
+                        <div id="deadline-input-container">
+                            <span style="color: var(--text-muted);">期限なし</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="btn btn-secondary" onclick="ProjectsUI.closeTaskEditor()">キャンセル</button>
                         <button type="submit" class="btn btn-primary">💾 保存</button>
                     </div>
                 </form>

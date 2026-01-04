@@ -8,6 +8,16 @@ let currentSort = 'priority';
 let hideCompleted = false;
 let focusModeActive = false;
 
+// プロジェクトグループの折りたたみ状態を保持（localStorageから復元）
+const collapsedProjectGroups = new Set(
+    JSON.parse(localStorage.getItem('collapsedProjectGroups') || '[]')
+);
+
+// 折りたたみ状態をlocalStorageに保存
+function saveCollapsedState() {
+    localStorage.setItem('collapsedProjectGroups', JSON.stringify([...collapsedProjectGroups]));
+}
+
 // 定数
 const PRIORITY_CONFIG = {
     high: { name: '高', class: 'badge-high', icon: '🔴' },
@@ -21,10 +31,10 @@ const SUBCATEGORY_OPTIONS = {
         { value: 'paper', label: '📄 論文' },
         { value: 'survey', label: '🔍 調査' }
     ],
-    certification: [
-        { value: 'study', label: '📖 学習' },
+    study: [
+        { value: 'reading', label: '📖 読書' },
         { value: 'practice', label: '✏️ 演習' },
-        { value: 'mock', label: '📝 模試' }
+        { value: 'certification', label: '📝 資格試験' }  // legacy support
     ],
     work: [],
     private: []
@@ -50,20 +60,24 @@ const escapeHTML = (str) => {
 };
 
 // 初期化
-document.addEventListener('DOMContentLoaded', () => {
-    // データ初期化
-    TaskManager.init();
+document.addEventListener('DOMContentLoaded', async () => {
+    // データ初期化（サーバーから読み込み）
+    await TaskManager.init();
     
     // ProjectsManager初期化（data.jsで定義）
     if (typeof ProjectsManager !== 'undefined') {
-        ProjectsManager.init();
+        await ProjectsManager.init();
     }
     
-    StatsManager.updateStatsUI();
-
+    console.log('📊 データ初期化完了');
+    
+    // カレンダーを先に初期化（プランナーデータをフェッチするため）
     if (typeof CalendarManager !== 'undefined') {
-        CalendarManager.init();
+        await CalendarManager.init();
     }
+
+    // カレンダー初期化後にStatsを更新（プランナーデータキャッシュを使用するため）
+    StatsManager.updateStatsUI();
 
     // AI Planner 初期化
     if (typeof AIPlanner !== 'undefined') {
@@ -104,14 +118,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===================================
 
 function renderAllTasks() {
-    ['work', 'research', 'certification', 'private'].forEach(renderCategoryTasks);
+    ['work', 'research', 'study', 'private'].forEach(renderCategoryTasks);
 }
 
 function renderCategoryTasks(category) {
     const container = document.getElementById(`${category}-tasks`);
     if (!container) return;
 
-    const allTasks = TaskManager.getTasksByCategory(category);
+    // TaskManagerのタスクを取得
+    const taskManagerTasks = TaskManager.getTasksByCategory(category);
+    
+    // ProjectsManagerのタスクも取得して統合
+    const projectTasks = getProjectTasksForCategory(category);
+    
+    // 統合されたタスク
+    const allTasks = [...taskManagerTasks, ...projectTasks];
     
     if (allTasks.length === 0) {
         container.innerHTML = `
@@ -123,26 +144,38 @@ function renderCategoryTasks(category) {
         return;
     }
 
-    // プロジェクトごとにグループ化
-    const projects = TaskManager.getProjectsByCategory(category);
+    // プロジェクトごとにグループ化（TaskManagerとProjectsManagerの両方から）
+    const taskManagerProjects = TaskManager.getProjectsByCategory(category);
+    const projectsManagerProjects = getProjectNamesForCategory(category);
+    const allProjectNames = [...new Set([...taskManagerProjects, ...projectsManagerProjects])];
+    
     const tasksWithoutProject = TaskManager.getTasksWithoutProject(category);
     
     let html = '';
 
     // プロジェクトごとに表示
-    projects.forEach(projectName => {
-        const projectTasks = TaskManager.getTasksByProject(category, projectName);
-        const sortedTasks = sortTasks(projectTasks);
-        const completedCount = projectTasks.filter(t => t.completed).length;
-        const totalCount = projectTasks.length;
+    allProjectNames.forEach(projectName => {
+        // TaskManagerからのタスク
+        const tmTasks = TaskManager.getTasksByProject(category, projectName);
+        // ProjectsManagerからのタスク（プロジェクト名で一致するもの）
+        const pmTasks = projectTasks.filter(t => t.projectName === projectName);
+        
+        const combinedTasks = [...tmTasks, ...pmTasks];
+        const sortedTasks = sortTasks(combinedTasks);
+        const completedCount = combinedTasks.filter(t => t.completed).length;
+        const totalCount = combinedTasks.length;
         const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+        
+        // プロジェクトアイコンを取得
+        const pmProject = ProjectsManager.getProjectByName(projectName);
+        const projectIcon = pmProject ? pmProject.icon : '📁';
         
         html += `
             <div class="project-group" data-project="${escapeHTML(projectName)}">
                 <div class="project-header" onclick="toggleProject(this)">
                     <div class="project-toggle">▼</div>
                     <div class="project-info">
-                        <div class="project-name">${escapeHTML(projectName)}</div>
+                        <div class="project-name">${projectIcon} ${escapeHTML(projectName)}</div>
                         <div class="project-progress">
                             <span class="project-count">${completedCount}/${totalCount}</span>
                             <div class="project-progress-bar">
@@ -153,7 +186,7 @@ function renderCategoryTasks(category) {
                     <button class="btn-icon project-add" onclick="event.stopPropagation(); openModal('${category}', null, '${escapeHTML(projectName)}')" title="タスクを追加">+</button>
                 </div>
                 <div class="project-tasks">
-                    ${sortedTasks.map(createTaskHTML).join('')}
+                    ${sortedTasks.map(t => t.source === 'project' ? createProjectTaskHTML(t) : createTaskHTML(t)).join('')}
                 </div>
             </div>
         `;
@@ -162,7 +195,7 @@ function renderCategoryTasks(category) {
     // プロジェクトに属さないタスク
     if (tasksWithoutProject.length > 0) {
         const sortedTasks = sortTasks(tasksWithoutProject);
-        if (projects.length > 0) {
+        if (allProjectNames.length > 0) {
             html += `
                 <div class="project-group uncategorized">
                     <div class="project-header" onclick="toggleProject(this)">
@@ -182,6 +215,104 @@ function renderCategoryTasks(category) {
     }
 
     container.innerHTML = html;
+    
+    // 折りたたみ状態を復元
+    restoreCollapsedState(container, category);
+}
+
+// 折りたたみ状態を復元する
+function restoreCollapsedState(container, category) {
+    container.querySelectorAll('.project-group').forEach(group => {
+        const projectKey = group.dataset.project || 'uncategorized';
+        const stateKey = `${category}:${projectKey}`;
+        
+        if (collapsedProjectGroups.has(stateKey)) {
+            group.classList.add('collapsed');
+            const toggle = group.querySelector('.project-toggle');
+            if (toggle) toggle.textContent = '▶';
+        }
+    });
+}
+
+// ProjectsManagerからカテゴリ別タスクを取得
+function getProjectTasksForCategory(category) {
+    if (typeof ProjectsManager === 'undefined') return [];
+    
+    const tasks = [];
+    const projects = ProjectsManager.getProjectsByCategory(category);
+    
+    projects.forEach(project => {
+        project.tasks.forEach(task => {
+            tasks.push({
+                ...task,
+                projectId: project.id,
+                projectName: project.name,
+                projectIcon: project.icon,
+                category: project.category,
+                source: 'project'
+            });
+        });
+    });
+    
+    return tasks;
+}
+
+// ProjectsManagerからカテゴリ別プロジェクト名を取得
+function getProjectNamesForCategory(category) {
+    if (typeof ProjectsManager === 'undefined') return [];
+    
+    const projects = ProjectsManager.getProjectsByCategory(category);
+    return projects.map(p => p.name);
+}
+
+// ProjectsManagerのタスク用HTML
+function createProjectTaskHTML(task) {
+    const priorityConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+    const deadlineDisplay = formatProjectTaskDeadline(task);
+    const statusLabel = task.completed ? '完了' : '未着手';
+    const statusClass = task.completed ? 'status-completed' : 'status-pending';
+    
+    return `
+        <div class="task-item project-source ${task.completed ? 'completed' : ''}" 
+             data-id="${task.id}" 
+             data-project-id="${task.projectId}">
+            <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
+                 onclick="toggleProjectTask('${task.projectId}', '${task.id}')">
+                ${task.completed ? '✓' : ''}
+            </div>
+            <div class="task-content">
+                <div class="task-title">${escapeHTML(task.title)}</div>
+                <div class="task-meta">
+                    <span class="status-badge-inline ${statusClass}">${statusLabel}</span>
+                    <span class="badge ${priorityConfig.class}">${priorityConfig.name}</span>
+                    ${deadlineDisplay ? `<span class="task-deadline">${deadlineDisplay}</span>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function formatProjectTaskDeadline(task) {
+    if (!task.deadline) return '';
+    
+    if (task.deadlineType === 'text') {
+        return `📅 ${task.deadline}`;
+    } else if (task.deadlineType === 'month') {
+        const [year, month] = task.deadline.split('-');
+        return `📅 ${parseInt(month)}月中`;
+    } else {
+        const date = new Date(task.deadline);
+        return `📅 ${date.getMonth() + 1}/${date.getDate()}`;
+    }
+}
+
+// ProjectsManagerのタスク完了トグル
+function toggleProjectTask(projectId, taskId) {
+    if (typeof ProjectsManager === 'undefined') return;
+    
+    ProjectsManager.toggleTaskInProject(projectId, taskId);
+    renderAllTasks();
+    StatsManager.updateStatsUI();
 }
 
 function sortTasks(tasks) {
@@ -202,7 +333,32 @@ function toggleProject(header) {
     const group = header.closest('.project-group');
     group.classList.toggle('collapsed');
     const toggle = header.querySelector('.project-toggle');
-    toggle.textContent = group.classList.contains('collapsed') ? '▶' : '▼';
+    const isCollapsed = group.classList.contains('collapsed');
+    toggle.textContent = isCollapsed ? '▶' : '▼';
+    
+    // 折りたたみ状態を保持
+    const projectKey = group.dataset.project || 'uncategorized';
+    // コンテナのIDからカテゴリを取得
+    let category = '';
+    const taskContainer = group.closest('[id$="-tasks"]');
+    const memoContainer = group.closest('#meeting-memos-list');
+    
+    if (taskContainer) {
+        category = taskContainer.id.replace('-tasks', '');
+    } else if (memoContainer) {
+        category = 'memos';
+    }
+    
+    const stateKey = `${category}:${projectKey}`;
+    
+    if (isCollapsed) {
+        collapsedProjectGroups.add(stateKey);
+    } else {
+        collapsedProjectGroups.delete(stateKey);
+    }
+    
+    // localStorageに保存
+    saveCollapsedState();
 }
 
 function createTaskHTML(task) {
@@ -519,6 +675,9 @@ function renderMeetingMemos() {
     }
 
     container.innerHTML = html;
+    
+    // 折りたたみ状態を復元
+    restoreCollapsedState(container, 'memos');
 }
 
 function createMemoHTML(memo) {
@@ -704,16 +863,58 @@ function linkTaskToProject(taskId) {
 // タスク管理ツールバー機能
 // ===================================
 
+// 期限超過かどうかを判定（deadlineTypeを考慮）
+function isTaskOverdue(task, today) {
+    if (!task.deadline || task.completed) return false;
+    
+    const deadlineType = task.deadlineType || 'date';
+    
+    // テキスト期限は期限超過判定しない
+    if (deadlineType === 'text') return false;
+    
+    // 月指定の場合（例: "2026-01"）、月末を過ぎたら期限超過
+    if (deadlineType === 'month') {
+        const [year, month] = task.deadline.split('-').map(Number);
+        const lastDayOfMonth = new Date(year, month, 0); // 月の最終日
+        const todayDate = new Date(today);
+        return todayDate > lastDayOfMonth;
+    }
+    
+    // 日付指定の場合、通常の比較
+    return task.deadline < today;
+}
+
+// 今日が期限かどうかを判定（deadlineTypeを考慮）
+function isTaskDueToday(task, today) {
+    if (!task.deadline) return false;
+    
+    const deadlineType = task.deadlineType || 'date';
+    
+    // テキスト期限は判定しない
+    if (deadlineType === 'text') return false;
+    
+    // 月指定の場合、今月なら該当
+    if (deadlineType === 'month') {
+        const todayMonth = today.substring(0, 7); // "2026-01"
+        return task.deadline === todayMonth;
+    }
+    
+    // 日付指定の場合
+    return task.deadline === today;
+}
+
 function updateFilterCounts() {
-    const allTasks = TaskManager.getAllTasks();
+    const taskManagerTasks = TaskManager.getAllTasks();
+    const projectTasks = typeof ProjectsManager !== 'undefined' ? ProjectsManager.getAllProjectTasks() : [];
+    const allTasks = [...taskManagerTasks, ...projectTasks];
     const today = new Date().toISOString().split('T')[0];
     
     // Calculate counts
     const counts = {
         all: allTasks.length,
         active: allTasks.filter(t => !t.completed).length,
-        overdue: allTasks.filter(t => !t.completed && t.deadline && t.deadline < today).length,
-        today: allTasks.filter(t => t.deadline === today).length,
+        overdue: allTasks.filter(t => isTaskOverdue(t, today)).length,
+        today: allTasks.filter(t => isTaskDueToday(t, today)).length,
         high: allTasks.filter(t => !t.completed && t.priority === 'high').length
     };
     
@@ -795,15 +996,12 @@ function toggleFocusMode() {
 
 function applyFiltersAndSort() {
     const allTasks = TaskManager.getAllTasks();
+    const allProjectTasks = typeof ProjectsManager !== 'undefined' ? ProjectsManager.getAllProjectTasks() : [];
     const searchQuery = document.getElementById('task-search')?.value.toLowerCase() || '';
     const today = new Date().toISOString().split('T')[0];
     
-    // Apply filters to each task item
-    document.querySelectorAll('.task-item-pro').forEach(item => {
-        const taskId = item.dataset.taskId;
-        const task = allTasks.find(t => t.id === taskId);
-        if (!task) return;
-        
+    // Helper function to check if task should be shown
+    const shouldShowTask = (task) => {
         let show = true;
         
         // Search filter
@@ -817,10 +1015,10 @@ function applyFiltersAndSort() {
                 if (task.completed) show = false;
                 break;
             case 'overdue':
-                if (task.completed || !task.deadline || task.deadline >= today) show = false;
+                if (!isTaskOverdue(task, today)) show = false;
                 break;
             case 'today':
-                if (task.deadline !== today) show = false;
+                if (!isTaskDueToday(task, today)) show = false;
                 break;
             case 'high':
                 if (task.completed || task.priority !== 'high') show = false;
@@ -832,17 +1030,52 @@ function applyFiltersAndSort() {
             show = false;
         }
         
+        return show;
+    };
+    
+    // Apply filters to TaskManager task items
+    document.querySelectorAll('.task-item-pro').forEach(item => {
+        const taskId = item.dataset.taskId;
+        const task = allTasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        const show = shouldShowTask(task);
+        
         // Apply visibility
         item.classList.toggle('hidden', !show);
         
         // Add visual indicators
-        item.classList.toggle('overdue', !task.completed && task.deadline && task.deadline < today);
-        item.classList.toggle('due-today', task.deadline === today);
+        item.classList.toggle('overdue', isTaskOverdue(task, today));
+        item.classList.toggle('due-today', isTaskDueToday(task, today));
         item.classList.toggle('high-priority', task.priority === 'high' && !task.completed);
     });
     
+    // Apply filters to ProjectsManager task items
+    document.querySelectorAll('.task-item.project-source').forEach(item => {
+        const taskId = item.dataset.id;
+        const projectId = item.dataset.projectId;
+        const task = allProjectTasks.find(t => t.id === taskId && t.projectId === projectId);
+        if (!task) return;
+        
+        const show = shouldShowTask(task);
+        
+        // Apply visibility
+        item.classList.toggle('hidden', !show);
+        
+        // Add visual indicators
+        item.classList.toggle('overdue', isTaskOverdue(task, today));
+        item.classList.toggle('due-today', isTaskDueToday(task, today));
+        item.classList.toggle('high-priority', task.priority === 'high' && !task.completed);
+    });
+    
+    // Also filter project groups - hide if all tasks are hidden
+    document.querySelectorAll('.project-group').forEach(group => {
+        const visibleTasks = group.querySelectorAll('.task-item-pro:not(.hidden), .task-item.project-source:not(.hidden)');
+        group.classList.toggle('hidden', visibleTasks.length === 0);
+    });
+    
     // Sort tasks within each category
-    ['work', 'research', 'certification', 'private'].forEach(category => {
+    ['work', 'research', 'study', 'private'].forEach(category => {
         const container = document.getElementById(`${category}-tasks`);
         if (!container) return;
         
