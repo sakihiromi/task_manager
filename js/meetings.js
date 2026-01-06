@@ -896,11 +896,19 @@ const MeetingsUI = {
         alert('コピーしました');
     },
 
-<<<<<<< HEAD
-=======
     async formatTranscription() {
         const textEl = document.getElementById('transcription-text');
         const formatBtn = document.getElementById('format-btn');
+        await this._formatText(textEl, formatBtn);
+    },
+
+    async formatMeetingTranscript() {
+        const textEl = document.getElementById('meeting-transcript');
+        const formatBtn = document.getElementById('format-meeting-btn');
+        await this._formatText(textEl, formatBtn);
+    },
+
+    async _formatText(textEl, formatBtn) {
         const originalText = textEl.value;
         
         if (!originalText || originalText.startsWith('❌') || originalText.startsWith('（')) {
@@ -910,6 +918,7 @@ const MeetingsUI = {
         
         // UI更新
         formatBtn.disabled = true;
+        const originalBtnText = formatBtn.textContent;
         formatBtn.textContent = '✨ 整形中...';
         
         try {
@@ -934,11 +943,10 @@ const MeetingsUI = {
             alert(`整形に失敗しました: ${error.message}`);
         } finally {
             formatBtn.disabled = false;
-            formatBtn.textContent = '✨ AIで整形';
+            formatBtn.textContent = originalBtnText;
         }
     },
 
->>>>>>> 2340cf2 (Initial commit (local copy))
     createMeetingFromTranscription() {
         const transcript = document.getElementById('transcription-text').value;
         document.getElementById('transcription-modal').classList.remove('active');

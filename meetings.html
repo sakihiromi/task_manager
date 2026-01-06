@@ -231,6 +231,10 @@
                         <label class="form-label">会議メモ / 書き起こし</label>
                         <textarea id="meeting-transcript" class="form-control" rows="8" 
                             placeholder="会議の内容をここに入力、または音声ファイルをドラッグ＆ドロップ..."></textarea>
+                        <button type="button" class="btn btn-secondary" id="format-meeting-btn" 
+                            onclick="MeetingsUI.formatMeetingTranscript()" style="margin-top: 8px;">
+                            ✨ AIで整形
+                        </button>
                     </div>
 
                     <div class="ai-actions" style="margin-bottom: 20px;">

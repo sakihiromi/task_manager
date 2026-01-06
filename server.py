@@ -440,40 +440,79 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 - 内容の意味は変えない
 - 専門用語はそのまま維持
 - 質疑応答がある場合は Q: A: 形式にする
-- 元のテキストが長い場合でも全文を整形すること（省略しない）
 
 整形したテキストのみを出力してください。説明は不要です。"""
 
-                payload = {
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"以下の書き起こしテキストを整形してください:\n\n{text}"}
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 16000
-                }
+                # Split long text into chunks (max ~8000 chars per chunk)
+                MAX_CHUNK_SIZE = 8000
+                text_length = len(text)
                 
-                req = urllib.request.Request(
-                    openai_url,
-                    data=json.dumps(payload).encode('utf-8'),
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {api_key}"
-                    }
-                )
+                print(f"📝 Formatting text: {text_length} chars")
                 
-                with urllib.request.urlopen(req, timeout=120) as response:
-                    response_body = json.loads(response.read())
-                    formatted_text = response_body['choices'][0]['message']['content']
+                if text_length <= MAX_CHUNK_SIZE:
+                    # Short text - process directly
+                    chunks = [text]
+                else:
+                    # Split into chunks at sentence boundaries
+                    chunks = []
+                    current_pos = 0
+                    while current_pos < text_length:
+                        end_pos = min(current_pos + MAX_CHUNK_SIZE, text_length)
+                        # Try to find a good break point
+                        if end_pos < text_length:
+                            # Look for sentence endings
+                            for sep in ['。', '．', '. ', '\n\n', '\n', ' ']:
+                                last_sep = text.rfind(sep, current_pos, end_pos)
+                                if last_sep > current_pos + MAX_CHUNK_SIZE // 2:
+                                    end_pos = last_sep + len(sep)
+                                    break
+                        chunks.append(text[current_pos:end_pos])
+                        current_pos = end_pos
+                    print(f"   Split into {len(chunks)} chunks")
+                
+                formatted_parts = []
+                for i, chunk in enumerate(chunks):
+                    print(f"   Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)...")
                     
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({
-                        "text": formatted_text,
-                        "success": True
-                    }).encode('utf-8'))
+                    chunk_prompt = system_prompt
+                    if len(chunks) > 1:
+                        chunk_prompt += f"\n\nこれはパート{i+1}/{len(chunks)}です。"
+                    
+                    payload = {
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": chunk_prompt},
+                            {"role": "user", "content": f"以下の書き起こしテキストを整形してください:\n\n{chunk}"}
+                        ],
+                        "temperature": 0.3,
+                        "max_tokens": 8000
+                    }
+                    
+                    req = urllib.request.Request(
+                        openai_url,
+                        data=json.dumps(payload).encode('utf-8'),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {api_key}"
+                        }
+                    )
+                    
+                    with urllib.request.urlopen(req, timeout=180) as response:
+                        response_body = json.loads(response.read())
+                        formatted_chunk = response_body['choices'][0]['message']['content']
+                        formatted_parts.append(formatted_chunk)
+                
+                # Combine all parts
+                formatted_text = '\n\n'.join(formatted_parts)
+                print(f"✅ Formatting complete: {len(formatted_text)} chars")
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "text": formatted_text,
+                    "success": True
+                }).encode('utf-8'))
                     
             except Exception as e:
                 print(f"Format error: {e}")
@@ -489,22 +528,12 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     return
                 
                 # Parse multipart form data
-<<<<<<< HEAD
-                import cgi
-                import io
-                import tempfile
-=======
                 import tempfile
                 import re
->>>>>>> 2340cf2 (Initial commit (local copy))
                 
                 content_length = int(self.headers['Content-Length'])
                 post_data = self.rfile.read(content_length)
                 
-<<<<<<< HEAD
-                # Parse boundary
-                boundary = content_type.split('boundary=')[1].encode()
-=======
                 print(f"📥 Received audio data: {content_length} bytes")
                 
                 # Parse boundary (handle quotes and extra params)
@@ -514,15 +543,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     return
                 boundary = boundary_match.group(1).strip('"').encode()
                 
->>>>>>> 2340cf2 (Initial commit (local copy))
                 parts = post_data.split(b'--' + boundary)
                 
                 audio_data = None
                 filename = 'audio.webm'
-<<<<<<< HEAD
-=======
                 content_type_audio = 'audio/webm'
->>>>>>> 2340cf2 (Initial commit (local copy))
                 
                 for part in parts:
                     if b'name="audio"' in part or b'name="file"' in part:
@@ -530,25 +555,6 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                         header_end = part.find(b'\r\n\r\n')
                         if header_end != -1:
                             audio_data = part[header_end + 4:]
-<<<<<<< HEAD
-                            # Remove trailing boundary markers
-                            if audio_data.endswith(b'\r\n'):
-                                audio_data = audio_data[:-2]
-                            if audio_data.endswith(b'--'):
-                                audio_data = audio_data[:-2]
-                            if audio_data.endswith(b'\r\n'):
-                                audio_data = audio_data[:-2]
-                        
-                        # Extract filename if present
-                        header_part = part[:header_end].decode('utf-8', errors='ignore')
-                        if 'filename="' in header_part:
-                            filename = header_part.split('filename="')[1].split('"')[0]
-                
-                if not audio_data:
-                    self.send_error_response(400, "No audio file provided")
-                    return
-                
-=======
                             # Remove trailing boundary markers more carefully
                             # Find the last occurrence of \r\n and remove from there
                             last_newline = audio_data.rfind(b'\r\n')
@@ -572,23 +578,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 
                 print(f"📝 Parsed audio: {len(audio_data)} bytes, filename={filename}, type={content_type_audio}")
                 
->>>>>>> 2340cf2 (Initial commit (local copy))
                 api_key = os.environ.get('OPENAI_API_KEY')
                 if not api_key or api_key == 'your-api-key-here':
                     self.send_error_response(500, "OpenAI API Key is missing")
                     return
                 
-<<<<<<< HEAD
-                # Save to temp file
-                with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
-                    tmp.write(audio_data)
-                    tmp_path = tmp.name
-                
-                try:
-                    # Call OpenAI Whisper API
-                    import subprocess
-                    
-=======
                 # Determine file extension from Content-Type (more reliable than filename)
                 # Whisper API supported formats: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
                 ext = '.webm'
@@ -700,19 +694,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 
                 try:
                     # Call OpenAI Whisper API
->>>>>>> 2340cf2 (Initial commit (local copy))
                     # Use curl for multipart upload (simpler than urllib for files)
                     result = subprocess.run([
                         'curl', '-s',
                         'https://api.openai.com/v1/audio/transcriptions',
                         '-H', f'Authorization: Bearer {api_key}',
-<<<<<<< HEAD
-                        '-F', f'file=@{tmp_path}',
-                        '-F', 'model=whisper-1',
-                        '-F', 'language=ja',
-                        '-F', 'response_format=json'
-                    ], capture_output=True, text=True, timeout=120)
-=======
                         '-F', f'file=@{upload_path}',
                         '-F', 'model=whisper-1',
                         '-F', 'language=ja',
@@ -720,20 +706,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     ], capture_output=True, text=True, timeout=300)
                     
                     print(f"🔊 Whisper API response: {result.stdout[:200] if result.stdout else result.stderr}")
->>>>>>> 2340cf2 (Initial commit (local copy))
                     
                     if result.returncode != 0:
                         raise Exception(f"Whisper API call failed: {result.stderr}")
                     
                     response_data = json.loads(result.stdout)
                     
-<<<<<<< HEAD
-=======
                     # Check for API errors
                     if 'error' in response_data:
                         raise Exception(f"Whisper API error: {response_data['error'].get('message', response_data['error'])}")
                     
->>>>>>> 2340cf2 (Initial commit (local copy))
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -743,15 +725,6 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     }).encode('utf-8'))
                     
                 finally:
-<<<<<<< HEAD
-                    # Clean up temp file
-                    import os as os_module
-                    if os_module.path.exists(tmp_path):
-                        os_module.unlink(tmp_path)
-                    
-            except Exception as e:
-                print(f"Transcription error: {e}")
-=======
                     # Clean up temp files
                     for path in [tmp_path, compressed_path]:
                         if path and Path(path).exists():
@@ -761,7 +734,6 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 print(f"❌ Transcription error: {e}")
                 import traceback
                 traceback.print_exc()
->>>>>>> 2340cf2 (Initial commit (local copy))
                 self.send_error_response(500, str(e))
         
         # APIエンドポイント: /api/data (データ保存)
