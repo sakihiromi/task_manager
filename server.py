@@ -404,6 +404,81 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_error_response(500, str(e))
         
+        # APIエンドポイント: /api/format-transcript (書き起こしテキストの整形)
+        elif self.path == '/api/format-transcript':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data)
+                text = data.get('text', '')
+                
+                if not text:
+                    self.send_error_response(400, "No text provided")
+                    return
+                
+                api_key = os.environ.get('OPENAI_API_KEY')
+                if not api_key or api_key == 'your-api-key-here':
+                    self.send_error_response(500, "OpenAI API Key is missing")
+                    return
+
+                openai_url = "https://api.openai.com/v1/chat/completions"
+                
+                system_prompt = """あなたは書き起こしテキストを整形する専門家です。
+以下の音声書き起こしテキストを読みやすく整形してください。
+
+## 整形ルール
+1. **段落分け**: 話題の変わり目や話者の変更で適切に改行・段落を分ける
+2. **句読点**: 適切な位置に句点（。）と読点（、）を追加
+3. **話者の識別**: 明らかに話者が変わった場合は、空行を入れて区切る
+4. **見出し**: 大きなトピックの変わり目には見出し（■ や ### など）を追加
+5. **フィラー除去**: 「えーと」「あのー」などの不要なフィラーは削除
+6. **重複削除**: 言い直しや繰り返しは整理
+7. **漢字変換**: ひらがなで書かれた一般的な単語は適切に漢字に変換
+
+## 注意
+- 内容の意味は変えない
+- 専門用語はそのまま維持
+- 質疑応答がある場合は Q: A: 形式にする
+- 元のテキストが長い場合でも全文を整形すること（省略しない）
+
+整形したテキストのみを出力してください。説明は不要です。"""
+
+                payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"以下の書き起こしテキストを整形してください:\n\n{text}"}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 16000
+                }
+                
+                req = urllib.request.Request(
+                    openai_url,
+                    data=json.dumps(payload).encode('utf-8'),
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}"
+                    }
+                )
+                
+                with urllib.request.urlopen(req, timeout=120) as response:
+                    response_body = json.loads(response.read())
+                    formatted_text = response_body['choices'][0]['message']['content']
+                    
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "text": formatted_text,
+                        "success": True
+                    }).encode('utf-8'))
+                    
+            except Exception as e:
+                print(f"Format error: {e}")
+                self.send_error_response(500, str(e))
+        
         # APIエンドポイント: /api/transcribe (音声書き起こし - Whisper API)
         elif self.path == '/api/transcribe':
             try:
