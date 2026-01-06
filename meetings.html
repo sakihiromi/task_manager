@@ -307,8 +307,16 @@
                 </div>
                 <div class="transcription-result" id="transcription-result" style="display: none;">
                     <label class="form-label">書き起こし結果</label>
+<<<<<<< HEAD
                     <textarea id="transcription-text" class="form-control" rows="10" readonly></textarea>
                     <div style="display: flex; gap: 12px; margin-top: 16px;">
+=======
+                    <textarea id="transcription-text" class="form-control" rows="15"></textarea>
+                    <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.formatTranscription()" id="format-btn">
+                            ✨ AIで整形
+                        </button>
+>>>>>>> 2340cf2 (Initial commit (local copy))
                         <button type="button" class="btn btn-secondary" onclick="MeetingsUI.copyTranscription()">
                             📋 コピー
                         </button>

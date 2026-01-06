@@ -414,19 +414,40 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     return
                 
                 # Parse multipart form data
+<<<<<<< HEAD
                 import cgi
                 import io
                 import tempfile
+=======
+                import tempfile
+                import re
+>>>>>>> 2340cf2 (Initial commit (local copy))
                 
                 content_length = int(self.headers['Content-Length'])
                 post_data = self.rfile.read(content_length)
                 
+<<<<<<< HEAD
                 # Parse boundary
                 boundary = content_type.split('boundary=')[1].encode()
+=======
+                print(f"📥 Received audio data: {content_length} bytes")
+                
+                # Parse boundary (handle quotes and extra params)
+                boundary_match = re.search(r'boundary=([^;\s]+)', content_type)
+                if not boundary_match:
+                    self.send_error_response(400, "Could not find boundary in Content-Type")
+                    return
+                boundary = boundary_match.group(1).strip('"').encode()
+                
+>>>>>>> 2340cf2 (Initial commit (local copy))
                 parts = post_data.split(b'--' + boundary)
                 
                 audio_data = None
                 filename = 'audio.webm'
+<<<<<<< HEAD
+=======
+                content_type_audio = 'audio/webm'
+>>>>>>> 2340cf2 (Initial commit (local copy))
                 
                 for part in parts:
                     if b'name="audio"' in part or b'name="file"' in part:
@@ -434,6 +455,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                         header_end = part.find(b'\r\n\r\n')
                         if header_end != -1:
                             audio_data = part[header_end + 4:]
+<<<<<<< HEAD
                             # Remove trailing boundary markers
                             if audio_data.endswith(b'\r\n'):
                                 audio_data = audio_data[:-2]
@@ -451,11 +473,37 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_error_response(400, "No audio file provided")
                     return
                 
+=======
+                            # Remove trailing boundary markers more carefully
+                            # Find the last occurrence of \r\n and remove from there
+                            last_newline = audio_data.rfind(b'\r\n')
+                            if last_newline > 0:
+                                audio_data = audio_data[:last_newline]
+                        
+                        # Extract filename and content-type if present
+                        header_part = part[:header_end].decode('utf-8', errors='ignore')
+                        if 'filename="' in header_part:
+                            filename = header_part.split('filename="')[1].split('"')[0]
+                        if 'Content-Type:' in header_part:
+                            ct_match = re.search(r'Content-Type:\s*([^\r\n]+)', header_part)
+                            if ct_match:
+                                content_type_audio = ct_match.group(1).strip()
+                        break
+                
+                if not audio_data or len(audio_data) < 100:
+                    print(f"❌ Audio data too small or empty: {len(audio_data) if audio_data else 0} bytes")
+                    self.send_error_response(400, "No valid audio file provided")
+                    return
+                
+                print(f"📝 Parsed audio: {len(audio_data)} bytes, filename={filename}, type={content_type_audio}")
+                
+>>>>>>> 2340cf2 (Initial commit (local copy))
                 api_key = os.environ.get('OPENAI_API_KEY')
                 if not api_key or api_key == 'your-api-key-here':
                     self.send_error_response(500, "OpenAI API Key is missing")
                     return
                 
+<<<<<<< HEAD
                 # Save to temp file
                 with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
                     tmp.write(audio_data)
@@ -465,22 +513,152 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     # Call OpenAI Whisper API
                     import subprocess
                     
+=======
+                # Determine file extension from Content-Type (more reliable than filename)
+                # Whisper API supported formats: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
+                ext = '.webm'
+                needs_conversion = False
+                
+                # Content-Type takes priority over filename
+                if 'quicktime' in content_type_audio or 'mov' in content_type_audio:
+                    ext = '.mov'
+                    needs_conversion = True  # MOV not supported by Whisper
+                elif 'mp3' in content_type_audio:
+                    ext = '.mp3'
+                elif 'mp4' in content_type_audio:
+                    ext = '.mp4'
+                elif 'mpeg' in content_type_audio:
+                    ext = '.mp3'
+                elif 'wav' in content_type_audio:
+                    ext = '.wav'
+                elif 'm4a' in content_type_audio:
+                    ext = '.m4a'
+                elif 'ogg' in content_type_audio:
+                    ext = '.ogg'
+                elif 'flac' in content_type_audio:
+                    ext = '.flac'
+                elif 'webm' in content_type_audio:
+                    ext = '.webm'
+                elif filename and '.' in filename:
+                    # Fallback to filename extension
+                    file_ext = '.' + filename.rsplit('.', 1)[-1].lower()
+                    if file_ext in ['.webm', '.mp3', '.mp4', '.wav', '.m4a', '.ogg', '.flac', '.oga', '.mpga']:
+                        ext = file_ext
+                    elif file_ext in ['.mov', '.avi', '.mkv']:
+                        ext = file_ext
+                        needs_conversion = True
+                
+                # Save to temp file
+                import subprocess
+                
+                with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                    tmp.write(audio_data)
+                    tmp_path = tmp.name
+                
+                print(f"💾 Saved temp file: {tmp_path} ({len(audio_data)} bytes)")
+                
+                # Whisper API limit is 25MB - compress if needed
+                WHISPER_MAX_SIZE = 25 * 1024 * 1024  # 25MB
+                upload_path = tmp_path
+                compressed_path = None
+                
+                # Check if file has audio stream using ffprobe
+                def has_audio_stream(filepath):
+                    try:
+                        probe_result = subprocess.run([
+                            'ffprobe', '-v', 'error',
+                            '-select_streams', 'a',
+                            '-show_entries', 'stream=codec_type',
+                            '-of', 'csv=p=0',
+                            filepath
+                        ], capture_output=True, text=True, timeout=30)
+                        return 'audio' in probe_result.stdout
+                    except Exception:
+                        return True  # Assume it has audio if we can't check
+                
+                # For video files, check if audio exists
+                if ext in ['.mov', '.mp4', '.webm', '.mkv', '.avi']:
+                    if not has_audio_stream(tmp_path):
+                        raise Exception("このファイルには音声トラックが含まれていません。音声付きで録画するか、音声ファイルをアップロードしてください。")
+                
+                # Convert if format not supported by Whisper API or file too large
+                if needs_conversion or len(audio_data) > WHISPER_MAX_SIZE:
+                    reason = "非対応形式のため" if needs_conversion else f"サイズが大きいため({len(audio_data) // 1024 // 1024}MB > 25MB)"
+                    print(f"⚠️ {reason}、ffmpegで変換中...")
+                    
+                    # Check if ffmpeg is available
+                    ffmpeg_check = subprocess.run(['which', 'ffmpeg'], capture_output=True)
+                    if ffmpeg_check.returncode != 0:
+                        if needs_conversion:
+                            raise Exception(f"この形式（{ext}）はWhisper APIに対応していません。ffmpegをインストールするか、対応形式（mp3, mp4, wav, webm等）に変換してください。")
+                        else:
+                            raise Exception(f"ファイルサイズが大きすぎます（{len(audio_data) // 1024 // 1024}MB > 25MB）。ffmpegをインストールするか、より短い音声ファイルを使用してください。")
+                    
+                    # Convert/compress to mp3
+                    compressed_path = tmp_path.rsplit('.', 1)[0] + '_converted.mp3'
+                    
+                    compress_result = subprocess.run([
+                        'ffmpeg', '-y', '-i', tmp_path,
+                        '-vn',  # No video
+                        '-ar', '16000',  # 16kHz sample rate (good for speech)
+                        '-ac', '1',  # Mono
+                        '-b:a', '64k',  # 64kbps bitrate
+                        '-f', 'mp3',
+                        compressed_path
+                    ], capture_output=True, text=True, timeout=300)
+                    
+                    if compress_result.returncode != 0:
+                        print(f"❌ ffmpeg conversion failed: {compress_result.stderr}")
+                        # Check if it's because no audio stream
+                        if 'does not contain any stream' in compress_result.stderr or 'Output file #0 does not contain' in compress_result.stderr:
+                            raise Exception("このファイルには音声トラックが含まれていません。音声付きで録画するか、音声ファイルをアップロードしてください。")
+                        raise Exception(f"音声変換に失敗しました: {compress_result.stderr[-300:]}")
+                    
+                    # Check converted size
+                    converted_size = Path(compressed_path).stat().st_size
+                    print(f"✅ Converted: {len(audio_data)} bytes → {converted_size} bytes")
+                    
+                    if converted_size > WHISPER_MAX_SIZE:
+                        raise Exception(f"変換後もファイルが大きすぎます（{converted_size // 1024 // 1024}MB）。より短い音声ファイルを使用してください。")
+                    
+                    upload_path = compressed_path
+                
+                try:
+                    # Call OpenAI Whisper API
+>>>>>>> 2340cf2 (Initial commit (local copy))
                     # Use curl for multipart upload (simpler than urllib for files)
                     result = subprocess.run([
                         'curl', '-s',
                         'https://api.openai.com/v1/audio/transcriptions',
                         '-H', f'Authorization: Bearer {api_key}',
+<<<<<<< HEAD
                         '-F', f'file=@{tmp_path}',
                         '-F', 'model=whisper-1',
                         '-F', 'language=ja',
                         '-F', 'response_format=json'
                     ], capture_output=True, text=True, timeout=120)
+=======
+                        '-F', f'file=@{upload_path}',
+                        '-F', 'model=whisper-1',
+                        '-F', 'language=ja',
+                        '-F', 'response_format=json'
+                    ], capture_output=True, text=True, timeout=300)
+                    
+                    print(f"🔊 Whisper API response: {result.stdout[:200] if result.stdout else result.stderr}")
+>>>>>>> 2340cf2 (Initial commit (local copy))
                     
                     if result.returncode != 0:
                         raise Exception(f"Whisper API call failed: {result.stderr}")
                     
                     response_data = json.loads(result.stdout)
                     
+<<<<<<< HEAD
+=======
+                    # Check for API errors
+                    if 'error' in response_data:
+                        raise Exception(f"Whisper API error: {response_data['error'].get('message', response_data['error'])}")
+                    
+>>>>>>> 2340cf2 (Initial commit (local copy))
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -490,6 +668,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     }).encode('utf-8'))
                     
                 finally:
+<<<<<<< HEAD
                     # Clean up temp file
                     import os as os_module
                     if os_module.path.exists(tmp_path):
@@ -497,6 +676,17 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     
             except Exception as e:
                 print(f"Transcription error: {e}")
+=======
+                    # Clean up temp files
+                    for path in [tmp_path, compressed_path]:
+                        if path and Path(path).exists():
+                            Path(path).unlink()
+                    
+            except Exception as e:
+                print(f"❌ Transcription error: {e}")
+                import traceback
+                traceback.print_exc()
+>>>>>>> 2340cf2 (Initial commit (local copy))
                 self.send_error_response(500, str(e))
         
         # APIエンドポイント: /api/data (データ保存)
