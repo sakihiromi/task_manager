@@ -666,12 +666,36 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     # Convert/compress to mp3
                     compressed_path = tmp_path.rsplit('.', 1)[0] + '_converted.mp3'
                     
+                    # Get audio duration first to calculate optimal bitrate
+                    duration_result = subprocess.run([
+                        'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                        '-of', 'default=noprint_wrappers=1:nokey=1', tmp_path
+                    ], capture_output=True, text=True, timeout=60)
+                    
+                    # Calculate optimal bitrate based on duration
+                    # Target: 24MB to have some margin (24 * 1024 * 1024 * 8 bits)
+                    target_size_bits = 24 * 1024 * 1024 * 8
+                    bitrate = '64k'  # Default
+                    
+                    if duration_result.returncode == 0 and duration_result.stdout.strip():
+                        try:
+                            duration_seconds = float(duration_result.stdout.strip())
+                            if duration_seconds > 0:
+                                # Calculate required bitrate (with 10% safety margin)
+                                calculated_bitrate = int(target_size_bits / duration_seconds * 0.9)
+                                # Clamp between 16kbps (minimum for speech) and 64kbps
+                                calculated_bitrate = max(16000, min(64000, calculated_bitrate))
+                                bitrate = f'{calculated_bitrate // 1000}k'
+                                print(f"📊 Duration: {duration_seconds:.1f}s, Calculated bitrate: {bitrate}")
+                        except ValueError:
+                            print("⚠️ Could not parse duration, using default 64k bitrate")
+                    
                     compress_result = subprocess.run([
                         'ffmpeg', '-y', '-i', tmp_path,
                         '-vn',  # No video
                         '-ar', '16000',  # 16kHz sample rate (good for speech)
                         '-ac', '1',  # Mono
-                        '-b:a', '64k',  # 64kbps bitrate
+                        '-b:a', bitrate,  # Dynamic bitrate
                         '-f', 'mp3',
                         compressed_path
                     ], capture_output=True, text=True, timeout=300)
@@ -685,10 +709,25 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     
                     # Check converted size
                     converted_size = Path(compressed_path).stat().st_size
-                    print(f"✅ Converted: {len(audio_data)} bytes → {converted_size} bytes")
+                    print(f"✅ Converted: {len(audio_data)} bytes → {converted_size} bytes (bitrate: {bitrate})")
+                    
+                    # If still too large, try with minimum bitrate
+                    if converted_size > WHISPER_MAX_SIZE:
+                        print(f"⚠️ Still too large ({converted_size // 1024 // 1024}MB), retrying with minimum bitrate (16k)...")
+                        compress_result2 = subprocess.run([
+                            'ffmpeg', '-y', '-i', tmp_path,
+                            '-vn', '-ar', '16000', '-ac', '1',
+                            '-b:a', '16k',  # Minimum bitrate for speech
+                            '-f', 'mp3',
+                            compressed_path
+                        ], capture_output=True, text=True, timeout=300)
+                        
+                        if compress_result2.returncode == 0:
+                            converted_size = Path(compressed_path).stat().st_size
+                            print(f"✅ Re-converted with 16k: {converted_size} bytes")
                     
                     if converted_size > WHISPER_MAX_SIZE:
-                        raise Exception(f"変換後もファイルが大きすぎます（{converted_size // 1024 // 1024}MB）。より短い音声ファイルを使用してください。")
+                        raise Exception(f"変換後もファイルが大きすぎます（{converted_size // 1024 // 1024}MB）。音声が長すぎます（最大約3時間まで）。より短い音声ファイルを使用してください。")
                     
                     upload_path = compressed_path
                 

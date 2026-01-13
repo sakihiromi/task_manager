@@ -411,6 +411,7 @@ const MeetingsUI = {
                     </div>
                 </div>
                 <div class="meeting-actions">
+                    <button class="btn-icon" onclick="event.stopPropagation(); MeetingsUI.exportMeetingToPDF('${meeting.id}')" title="PDF出力">📄</button>
                     <button class="btn-icon" onclick="event.stopPropagation(); MeetingsUI.deleteMeeting('${meeting.id}')" title="削除">🗑️</button>
                 </div>
             </div>
@@ -427,6 +428,7 @@ const MeetingsUI = {
         document.getElementById('meeting-form').reset();
         document.getElementById('meeting-modal-title').textContent = '🎙️ 新規会議メモ';
         document.getElementById('btn-delete-meeting').style.display = 'none';
+        document.getElementById('btn-export-pdf').style.display = 'none';
         document.getElementById('action-items-list').innerHTML = '';
         document.getElementById('meeting-summary').textContent = '';
         document.getElementById('meeting-minutes').textContent = '';
@@ -458,6 +460,7 @@ const MeetingsUI = {
         
         document.getElementById('meeting-modal-title').textContent = '🎙️ 会議メモを編集';
         document.getElementById('btn-delete-meeting').style.display = 'block';
+        document.getElementById('btn-export-pdf').style.display = 'inline-block';
         document.getElementById('meeting-modal').classList.add('active');
     },
 
@@ -654,6 +657,7 @@ const MeetingsUI = {
     recordingStartTime: null,
     recordingTimer: null,
     recordingType: null, // 'mic' or 'system'
+    lastRecordedBlob: null, // 最後に録音した音声Blobを保持
 
     async startRecording() {
         if (this.isRecording) {
@@ -713,6 +717,30 @@ const MeetingsUI = {
         }
     },
     
+    // Zoomリンクから会議に参加してシステム音声を録音
+    async startZoomRecording(zoomUrl) {
+        if (!zoomUrl) {
+            alert('Zoomリンクを入力してください');
+            return;
+        }
+        
+        // Validate Zoom URL
+        if (!zoomUrl.includes('zoom.us/') && !zoomUrl.includes('zoom.com/')) {
+            alert('有効なZoomリンクを入力してください\n\n例: https://zoom.us/j/1234567890');
+            return;
+        }
+        
+        // Open Zoom link in new tab/window
+        window.open(zoomUrl, '_blank');
+        
+        // Wait a moment then start system audio recording
+        setTimeout(() => {
+            alert('Zoomが開きました。\n\n1. Zoomで会議に参加してください\n2. 次のダイアログで「タブの音声を共有」にチェックを入れてください\n3. Zoomのタブを選択して共有してください');
+            
+            this.startSystemAudioRecording();
+        }, 1500);
+    },
+    
     setupRecorder(stream, type) {
         this.recordingType = type;
         this.mediaRecorder = new MediaRecorder(stream, {
@@ -726,9 +754,16 @@ const MeetingsUI = {
             }
         };
 
-        this.mediaRecorder.onstop = () => {
+        this.mediaRecorder.onstop = async () => {
             const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-            this.handleAudioFile(audioBlob);
+            this.lastRecordedBlob = audioBlob;
+            
+            // 書き起こしモーダルを開いて処理
+            this.openTranscriptionModal();
+            
+            // 少し待ってから処理開始（モーダルのDOM表示を待つ）
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await this.processRecordedAudio(audioBlob);
         };
 
         this.mediaRecorder.start(1000);
@@ -742,6 +777,90 @@ const MeetingsUI = {
         
         // Update UI
         this.showRecordingUI(type);
+    },
+    
+    // 録音した音声を処理（書き起こし）
+    async processRecordedAudio(audioBlob) {
+        const uploadArea = document.getElementById('upload-area');
+        const progressEl = document.getElementById('transcription-progress');
+        const progressBar = document.getElementById('transcription-progress-bar');
+        const resultEl = document.getElementById('transcription-result');
+        const textEl = document.getElementById('transcription-text');
+        const progressText = document.getElementById('transcription-progress-text');
+        
+        if (uploadArea) uploadArea.style.display = 'none';
+        if (progressEl) progressEl.style.display = 'block';
+        if (progressBar) progressBar.style.width = '10%';
+        if (progressText) progressText.textContent = '録音した音声を処理中...';
+
+        try {
+            // Create FormData with audio file
+            const formData = new FormData();
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            formData.append('audio', audioBlob, `recording_${timestamp}.webm`);
+            
+            if (progressBar) progressBar.style.width = '30%';
+            if (progressText) progressText.textContent = 'Whisper APIで書き起こし中...';
+            
+            const response = await fetch('/api/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (progressBar) progressBar.style.width = '80%';
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (progressBar) progressBar.style.width = '100%';
+            
+            setTimeout(() => {
+                if (progressEl) progressEl.style.display = 'none';
+                if (resultEl) resultEl.style.display = 'block';
+                
+                if (data.text && data.text.trim()) {
+                    textEl.value = data.text;
+                } else {
+                    textEl.value = '（音声が検出されませんでした）';
+                }
+            }, 300);
+            
+        } catch (error) {
+            console.error('Transcription error:', error);
+            
+            if (progressEl) progressEl.style.display = 'none';
+            if (resultEl) resultEl.style.display = 'block';
+            
+            if (error.message.includes('API Key')) {
+                textEl.value = '❌ エラー: OpenAI API Keyが設定されていません。\n\n.envファイルにOPENAI_API_KEYを設定してください。';
+            } else {
+                textEl.value = `❌ 書き起こしエラー: ${error.message}\n\nサーバーが起動しているか確認してください。\n(python server.py)`;
+            }
+        }
+    },
+    
+    // 録音した音声ファイルをダウンロード
+    downloadRecording() {
+        if (!this.lastRecordedBlob) {
+            alert('ダウンロードできる録音がありません。\n\nまず録音を行ってください。');
+            return;
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `recording_${timestamp}.webm`;
+        
+        const url = URL.createObjectURL(this.lastRecordedBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     },
     
     showRecordingUI(type) {
@@ -953,6 +1072,295 @@ const MeetingsUI = {
         
         this.openNewMeetingModal();
         document.getElementById('meeting-transcript').value = transcript;
+    },
+
+    // ===================================
+    // PDF Export
+    // ===================================
+
+    exportToPDF() {
+        const meetingId = this.currentEditingId;
+        if (!meetingId) {
+            alert('会議を保存してからPDFを出力してください');
+            return;
+        }
+
+        const meeting = MeetingsManager.getMeeting(meetingId);
+        if (!meeting) {
+            alert('会議が見つかりません');
+            return;
+        }
+
+        this.generatePrintablePage(meeting);
+    },
+
+    exportMeetingToPDF(meetingId) {
+        const meeting = MeetingsManager.getMeeting(meetingId);
+        if (!meeting) {
+            alert('会議が見つかりません');
+            return;
+        }
+
+        this.generatePrintablePage(meeting);
+    },
+
+    generatePrintablePage(meeting) {
+        const datetime = new Date(meeting.datetime);
+        const dateStr = datetime.toLocaleDateString('ja-JP', { 
+            year: 'numeric', month: 'long', day: 'numeric',
+            weekday: 'long'
+        });
+        const timeStr = datetime.toLocaleTimeString('ja-JP', { 
+            hour: '2-digit', minute: '2-digit' 
+        });
+
+        // Generate action items HTML
+        let actionItemsHTML = '';
+        if (meeting.actionItems && meeting.actionItems.length > 0) {
+            actionItemsHTML = `
+                <section class="pdf-section">
+                    <h2>📋 アクションアイテム</h2>
+                    <table class="action-table">
+                        <thead>
+                            <tr>
+                                <th>アクション</th>
+                                <th>担当者</th>
+                                <th>期限</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${meeting.actionItems.map(item => `
+                                <tr>
+                                    <td>${this.escapeHTML(item.title)}</td>
+                                    <td>${this.escapeHTML(item.assignee || '-')}</td>
+                                    <td>${item.dueDate || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </section>
+            `;
+        }
+
+        const printHTML = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>${this.escapeHTML(meeting.title)} - 会議記録</title>
+    <style>
+        @page {
+            margin: 20mm;
+            size: A4;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+            padding: 0;
+        }
+        
+        .pdf-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .pdf-header {
+            text-align: center;
+            border-bottom: 3px solid #4f46e5;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .pdf-header h1 {
+            font-size: 22pt;
+            color: #1e1b4b;
+            margin-bottom: 10px;
+        }
+        
+        .pdf-meta {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            color: #666;
+            font-size: 10pt;
+        }
+        
+        .pdf-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .pdf-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        
+        .pdf-section h2 {
+            font-size: 14pt;
+            color: #4f46e5;
+            border-left: 4px solid #4f46e5;
+            padding-left: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .pdf-section .content {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px 20px;
+            white-space: pre-wrap;
+            font-size: 10pt;
+            line-height: 1.8;
+        }
+        
+        .action-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+        }
+        
+        .action-table th,
+        .action-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        
+        .action-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .action-table tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .pdf-footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 9pt;
+        }
+        
+        @media print {
+            body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+        }
+        
+        .print-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .print-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .print-btn.primary {
+            background: #4f46e5;
+            color: white;
+        }
+        
+        .print-btn.primary:hover {
+            background: #4338ca;
+        }
+        
+        .print-btn.secondary {
+            background: #e2e8f0;
+            color: #475569;
+        }
+        
+        .print-btn.secondary:hover {
+            background: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-controls no-print">
+        <button class="print-btn primary" onclick="window.print()">🖨️ 印刷 / PDF保存</button>
+        <button class="print-btn secondary" onclick="window.close()">✕ 閉じる</button>
+    </div>
+
+    <div class="pdf-container">
+        <header class="pdf-header">
+            <h1>📝 ${this.escapeHTML(meeting.title)}</h1>
+            <div class="pdf-meta">
+                <span>📅 ${dateStr} ${timeStr}</span>
+                ${meeting.project ? `<span>📂 ${this.escapeHTML(meeting.project)}</span>` : ''}
+                ${meeting.participants ? `<span>👥 ${this.escapeHTML(meeting.participants)}</span>` : ''}
+            </div>
+        </header>
+
+        ${meeting.summary ? `
+        <section class="pdf-section">
+            <h2>✨ 要約</h2>
+            <div class="content">${this.escapeHTML(meeting.summary)}</div>
+        </section>
+        ` : ''}
+
+        ${meeting.minutes ? `
+        <section class="pdf-section">
+            <h2>📋 議事録</h2>
+            <div class="content">${this.escapeHTML(meeting.minutes)}</div>
+        </section>
+        ` : ''}
+
+        ${actionItemsHTML}
+
+        ${meeting.transcript ? `
+        <section class="pdf-section">
+            <h2>🎙️ 書き起こし</h2>
+            <div class="content">${this.escapeHTML(meeting.transcript)}</div>
+        </section>
+        ` : ''}
+
+        <footer class="pdf-footer">
+            <p>作成日: ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })} | Meeting Hub</p>
+        </footer>
+    </div>
+</body>
+</html>
+        `;
+
+        // Open in new window for printing
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+        } else {
+            alert('ポップアップがブロックされました。ポップアップを許可してください。');
+        }
     },
 
     // ===================================

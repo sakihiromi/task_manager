@@ -129,11 +129,31 @@
                 <div class="banner-icon">🎙️</div>
                 <div class="banner-content">
                     <h3>スタンドアロンモード</h3>
-                    <p>Teams不要！ブラウザで直接録音・書き起こし・要約ができます</p>
+                    <p>Teams/Zoom不要！ブラウザで直接録音・書き起こし・要約ができます</p>
                     <ul class="feature-list">
                         <li>🎤 <strong>マイク録音</strong>: 自分の声やスピーカーからの音声を録音</li>
-                        <li>🖥️ <strong>システム音声</strong>: イヤホン使用中でもPCの音声を録音（Teamsなど）</li>
+                        <li>🖥️ <strong>システム音声</strong>: イヤホン使用中でもPCの音声を録音（Teams/Zoomなど）</li>
                     </ul>
+                </div>
+            </div>
+
+            <!-- Zoom Recording Section -->
+            <div class="zoom-section" id="zoom-section">
+                <div class="section-header">
+                    <h2>🎥 Zoom会議を録音</h2>
+                </div>
+                <div class="zoom-input-container">
+                    <div class="zoom-input-row">
+                        <span class="zoom-icon">📹</span>
+                        <input type="text" id="zoom-link-input" class="form-control zoom-input" 
+                            placeholder="Zoomリンクを貼り付け（例: https://zoom.us/j/1234567890）">
+                        <button class="btn btn-primary" onclick="MeetingsUI.startZoomRecording(document.getElementById('zoom-link-input').value)">
+                            🎙️ 参加して録音開始
+                        </button>
+                    </div>
+                    <div class="zoom-help">
+                        <p>💡 <strong>使い方:</strong> Zoomリンクを貼り付けて「参加して録音開始」をクリック → Zoomが開いたら会議に参加 → システム音声を共有してZoomタブを選択</p>
+                    </div>
                 </div>
             </div>
 
@@ -276,6 +296,10 @@
                             🗑️ 削除
                         </button>
                         <div style="display: flex; gap: 12px; margin-left: auto;">
+                            <button type="button" class="btn btn-secondary" id="btn-export-pdf" 
+                                onclick="MeetingsUI.exportToPDF()" style="display: none;">
+                                📄 PDF出力
+                            </button>
                             <button type="button" class="btn btn-secondary" onclick="MeetingsUI.closeModal()">キャンセル</button>
                             <button type="submit" class="btn btn-primary">💾 保存</button>
                         </div>
@@ -311,18 +335,16 @@
                 </div>
                 <div class="transcription-result" id="transcription-result" style="display: none;">
                     <label class="form-label">書き起こし結果</label>
-<<<<<<< HEAD
-                    <textarea id="transcription-text" class="form-control" rows="10" readonly></textarea>
-                    <div style="display: flex; gap: 12px; margin-top: 16px;">
-=======
                     <textarea id="transcription-text" class="form-control" rows="15"></textarea>
                     <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
                         <button type="button" class="btn btn-secondary" onclick="MeetingsUI.formatTranscription()" id="format-btn">
                             ✨ AIで整形
                         </button>
->>>>>>> 2340cf2 (Initial commit (local copy))
                         <button type="button" class="btn btn-secondary" onclick="MeetingsUI.copyTranscription()">
                             📋 コピー
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="MeetingsUI.downloadRecording()">
+                            💾 音声を保存
                         </button>
                         <button type="button" class="btn btn-primary" onclick="MeetingsUI.createMeetingFromTranscription()">
                             🎙️ 会議メモを作成
